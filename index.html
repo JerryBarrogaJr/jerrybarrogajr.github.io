@@ -29,14 +29,13 @@
       margin-bottom: 20px;
     }
 
-    .form {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
+    /* 🔐 LOGIN */
+    #loginBox {
+      max-width: 350px;
+      margin: 100px auto;
       background: #1f1f1f;
-      padding: 15px;
+      padding: 20px;
       border-radius: 12px;
-      margin-bottom: 20px;
     }
 
     input, button {
@@ -44,11 +43,11 @@
       border-radius: 8px;
       border: none;
       font-size: 14px;
+      width: 100%;
+      margin: 5px 0;
     }
 
     input {
-      flex: 1;
-      min-width: 120px;
       background: #2a2a2a;
       color: white;
     }
@@ -58,11 +57,20 @@
       color: white;
       cursor: pointer;
       font-weight: bold;
-      min-width: 120px;
     }
 
     .delete-btn {
       background: #ff1744;
+    }
+
+    .form {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      background: #1f1f1f;
+      padding: 15px;
+      border-radius: 12px;
+      margin-bottom: 20px;
     }
 
     .table-container {
@@ -87,34 +95,27 @@
 
     th { color: #aaa; }
 
-    #mobileCards { display: none; }
-
-    .card {
-      background: #1f1f1f;
-      padding: 12px;
-      margin-bottom: 10px;
-      border-radius: 12px;
-    }
-
-    .card div {
-      margin: 5px 0;
-      font-size: 13px;
-    }
+    #app { display: none; }
 
     .expired { color: #ff5252; font-weight: bold; }
     .warning { color: #ffb300; font-weight: bold; }
     .active { color: #00e676; font-weight: bold; }
-
-    @media (max-width: 600px) {
-      .table-container { display: none; }
-      #mobileCards { display: block; }
-    }
   </style>
 </head>
 
 <body>
 
-<div class="container">
+<!-- 🔐 LOGIN SCREEN -->
+<div id="loginBox">
+  <h2 style="text-align:center;">Admin Login</h2>
+  <input type="text" id="username" placeholder="Username">
+  <input type="password" id="password" placeholder="Password">
+  <button onclick="login()">Login</button>
+</div>
+
+<!-- 📊 APP -->
+<div id="app" class="container">
+
   <h1>Southwave Membership Tracker</h1>
 
   <div class="form">
@@ -140,11 +141,24 @@
     </table>
   </div>
 
-  <div id="mobileCards"></div>
 </div>
 
 <script>
-  // ✅ YOUR SUPABASE CONNECTION
+  // 🔐 SIMPLE LOGIN
+  function login() {
+    const user = document.getElementById("username").value;
+    const pass = document.getElementById("password").value;
+
+    if (user === "admin" && pass === "admin") {
+      document.getElementById("loginBox").style.display = "none";
+      document.getElementById("app").style.display = "block";
+      loadMembers();
+    } else {
+      alert("Wrong username or password");
+    }
+  }
+
+  // ✅ SUPABASE
   const supabaseUrl = "https://oldaiifradpghhsjzghn.supabase.co";
   const supabaseKey = "sb_publishable_eaCeTtzXbN0yP7re8zd6zw_aT-ovkXJ";
 
@@ -158,91 +172,57 @@
     const startDate = document.getElementById("startDate").value;
     const duration = parseInt(document.getElementById("duration").value);
 
-    if (!name || !startDate || !duration) {
-      alert("Please fill all fields");
-      return;
-    }
-
     const start = new Date(startDate);
     const expiration = new Date(start);
     expiration.setDate(expiration.getDate() + duration);
 
-    const { error } = await supabaseClient
-      .from("members")
-      .insert([{
-        name: name,
-        start_date: startDate,
-        duration: duration,
-        expiration: expiration.toISOString()
-      }]);
+    await supabaseClient.from("members").insert([{
+      name,
+      start_date: startDate,
+      duration,
+      expiration: expiration.toISOString()
+    }]);
 
-    if (error) {
-      console.error(error);
-      alert("Error saving data");
-    } else {
-      loadMembers();
-    }
+    loadMembers();
   }
 
-  // 📥 LOAD MEMBERS
+  // 📥 LOAD
   async function loadMembers() {
-    const { data, error } = await supabaseClient
+    const { data } = await supabaseClient
       .from("members")
       .select("*")
       .order("id", { ascending: false });
-
-    if (error) {
-      console.error(error);
-      return;
-    }
 
     members = data;
     displayMembers();
   }
 
-  // ❌ DELETE MEMBER
+  // ❌ DELETE
   async function deleteMember(id) {
-    if (confirm("Remove this member?")) {
-      const { error } = await supabaseClient
-        .from("members")
-        .delete()
-        .eq("id", id);
-
-      if (error) {
-        console.error(error);
-      } else {
-        loadMembers();
-      }
-    }
+    await supabaseClient.from("members").delete().eq("id", id);
+    loadMembers();
   }
 
-  function getStatus(expiration) {
-    const today = new Date();
-    const exp = new Date(expiration);
-    const diff = (exp - today) / (1000 * 60 * 60 * 24);
-
+  // 📊 STATUS
+  function getStatus(exp) {
+    const diff = (new Date(exp) - new Date()) / 86400000;
     if (diff < 0) return "Expired";
     if (diff <= 3) return "Renew Soon";
     return "Active";
   }
 
-  function getRemainingDays(expiration) {
-    const today = new Date();
-    const exp = new Date(expiration);
-    let diff = Math.ceil((exp - today) / (1000 * 60 * 60 * 24));
-    return diff < 0 ? 0 : diff;
+  function getRemaining(exp) {
+    return Math.max(0, Math.ceil((new Date(exp) - new Date()) / 86400000));
   }
 
+  // 📋 DISPLAY
   function displayMembers() {
     const table = document.getElementById("memberList");
-    const cards = document.getElementById("mobileCards");
-
     table.innerHTML = "";
-    cards.innerHTML = "";
 
-    members.forEach((m) => {
+    members.forEach(m => {
       const status = getStatus(m.expiration);
-      const remaining = getRemainingDays(m.expiration);
+      const remaining = getRemaining(m.expiration);
 
       let color = "active";
       if (status === "Expired") color = "expired";
@@ -258,22 +238,8 @@
           <td><button class="delete-btn" onclick="deleteMember(${m.id})">Remove</button></td>
         </tr>
       `;
-
-      cards.innerHTML += `
-        <div class="card">
-          <div><b>Name:</b> ${m.name}</div>
-          <div><b>Start:</b> ${m.start_date}</div>
-          <div><b>Expiration:</b> ${new Date(m.expiration).toLocaleDateString()}</div>
-          <div><b>Remaining:</b> ${remaining} days</div>
-          <div class="${color}"><b>Status:</b> ${status}</div>
-          <button class="delete-btn" onclick="deleteMember(${m.id})">Remove</button>
-        </div>
-      `;
     });
   }
-
-  // 🚀 START
-  loadMembers();
 </script>
 
 </body>
