@@ -66,6 +66,7 @@ button {
 }
 
 .delete-btn { background: #ff1744; }
+.renew-btn { background: #2196f3; }
 
 #app, #dashboardPage { display: none; }
 
@@ -96,21 +97,9 @@ button {
   color: black;
 }
 
-/* STATUS COLORS */
-.status-active {
-  color: #00e676;
-  font-weight: bold;
-}
-
-.status-warning {
-  color: #ffb300;
-  font-weight: bold;
-}
-
-.status-expired {
-  color: #ff5252;
-  font-weight: bold;
-}
+.status-active { color: #00e676; font-weight: bold; }
+.status-warning { color: #ffb300; font-weight: bold; }
+.status-expired { color: #ff5252; font-weight: bold; }
 
 .table-container {
   background: #1f1f1f;
@@ -128,12 +117,6 @@ td, th {
   text-align: center;
   border-bottom: 1px solid #333;
 }
-
-.dashboard-box {
-  background: #1f1f1f;
-  padding: 20px;
-  border-radius: 12px;
-}
 </style>
 </head>
 
@@ -147,7 +130,7 @@ td, th {
   <button onclick="login()">Login</button>
 </div>
 
-<!-- MAIN APP -->
+<!-- APP -->
 <div id="app" class="container">
 
   <div class="top-btn" onclick="openDashboard()">Dashboard</div>
@@ -187,15 +170,10 @@ td, th {
 
 <!-- DASHBOARD -->
 <div id="dashboardPage" class="container">
-
   <div class="top-btn" onclick="backToApp()">Back</div>
 
   <h1>Dashboard</h1>
-
-  <div class="dashboard-box">
-    <canvas id="chart"></canvas>
-  </div>
-
+  <canvas id="chart"></canvas>
 </div>
 
 <script>
@@ -231,14 +209,14 @@ function backToApp() {
   app.style.display = "block";
 }
 
-// ADD MEMBER
+// ADD
 async function addMember() {
   const name = document.getElementById("name").value;
   const startDate = document.getElementById("startDate").value;
   const duration = parseInt(document.getElementById("duration").value);
 
   if (!name || !startDate || !duration) {
-    alert("Please fill all fields");
+    alert("Fill all fields");
     return;
   }
 
@@ -246,27 +224,42 @@ async function addMember() {
   const expiration = new Date(start);
   expiration.setDate(start.getDate() + duration);
 
-  const { error } = await supabaseClient.from("members").insert([{
+  await supabaseClient.from("members").insert([{
     name,
     start_date: startDate,
     duration,
     expiration: expiration.toISOString()
   }]);
 
-  if (error) {
-    alert("Failed to add member");
-    console.error(error);
-  } else {
-    loadMembers();
-  }
+  loadMembers();
 }
 
-// ❗ DELETE WITH CONFIRMATION (NEW)
+// DELETE
 async function deleteMember(id) {
-  const confirmDelete = confirm("Are you sure you want to remove this member?");
-  if (!confirmDelete) return;
+  if (!confirm("Delete this member?")) return;
 
   await supabaseClient.from("members").delete().eq("id", id);
+  loadMembers();
+}
+
+// 🔥 RENEW FUNCTION (NEW)
+async function renewMember(id) {
+  const extraDays = prompt("Enter days to renew:");
+  if (!extraDays || isNaN(extraDays)) return;
+
+  const member = members.find(m => m.id === id);
+  if (!member) return;
+
+  const currentExp = new Date(member.expiration);
+  currentExp.setDate(currentExp.getDate() + parseInt(extraDays));
+
+  await supabaseClient
+    .from("members")
+    .update({
+      expiration: currentExp.toISOString()
+    })
+    .eq("id", id);
+
   loadMembers();
 }
 
@@ -298,10 +291,10 @@ function displayMembers() {
        currentFilter === "warning" && status !== "Renew Soon" ||
        currentFilter === "expired" && status !== "Expired")) return;
 
-    let statusClass = "";
-    if (status === "Active") statusClass = "status-active";
-    if (status === "Renew Soon") statusClass = "status-warning";
-    if (status === "Expired") statusClass = "status-expired";
+    let color = "";
+    if (status === "Active") color = "status-active";
+    if (status === "Renew Soon") color = "status-warning";
+    if (status === "Expired") color = "status-expired";
 
     memberList.innerHTML += `
       <tr>
@@ -309,8 +302,11 @@ function displayMembers() {
         <td>${m.start_date}</td>
         <td>${new Date(m.expiration).toLocaleDateString()}</td>
         <td>${remaining}</td>
-        <td class="${statusClass}">${status}</td>
-        <td><button class="delete-btn" onclick="deleteMember(${m.id})">Remove</button></td>
+        <td class="${color}">${status}</td>
+        <td>
+          <button class="renew-btn" onclick="renewMember(${m.id})">Renew</button>
+          <button class="delete-btn" onclick="deleteMember(${m.id})">Delete</button>
+        </td>
       </tr>
     `;
   });
@@ -349,10 +345,7 @@ function renderChart() {
     options: {
       plugins: { legend: { display: false } },
       scales: {
-        y: {
-          beginAtZero: true,
-          ticks: { precision: 0, stepSize: 1 }
-        }
+        y: { beginAtZero: true, ticks: { precision: 0, stepSize: 1 } }
       }
     }
   });
