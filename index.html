@@ -29,7 +29,7 @@
       margin-bottom: 20px;
     }
 
-    /* LOGIN */
+    /* 🔐 LOGIN */
     #loginBox {
       max-width: 350px;
       margin: 120px auto;
@@ -63,6 +63,7 @@
       display: none;
     }
 
+    /* ➕ FORM */
     .form {
       display: flex;
       flex-wrap: wrap;
@@ -82,6 +83,34 @@
       background: #ff1744;
     }
 
+    /* 🔥 FILTER BAR (SINGLE ROW FIX) */
+    .filters {
+      display: flex;
+      flex-wrap: nowrap;   /* ❗ IMPORTANT FIX */
+      overflow-x: auto;    /* allows scroll if small screen */
+      gap: 10px;
+      margin: 10px 0 15px 0;
+      padding-bottom: 5px;
+    }
+
+    .filter-btn {
+      flex: 1;             /* equal width */
+      min-width: 120px;    /* keeps readable size */
+      background: #333;
+      padding: 10px;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .filter-btn.active {
+      background: #00c853;
+      color: black;
+      font-weight: bold;
+    }
+
+    /* TABLE */
     .table-container {
       overflow-x: auto;
       background: #1f1f1f;
@@ -107,28 +136,12 @@
     .expired { color: #ff5252; font-weight: bold; }
     .warning { color: #ffb300; font-weight: bold; }
     .active { color: #00e676; font-weight: bold; }
-
-    /* 🔥 SINGLE FILTER BUTTON */
-    .filter-box {
-      text-align: right;
-      margin: 10px 0;
-    }
-
-    .filter-btn {
-      width: 60px;
-      height: 45px;
-      border-radius: 10px;
-      background: #333;
-      font-size: 12px;
-      border: none;
-      cursor: pointer;
-    }
   </style>
 </head>
 
 <body>
 
-<!-- LOGIN -->
+<!-- 🔐 LOGIN -->
 <div id="loginBox">
   <h2 style="text-align:center;">Admin Login</h2>
   <input type="text" id="username" placeholder="Username">
@@ -141,6 +154,7 @@
 
   <h1>Southwave Membership Tracker</h1>
 
+  <!-- ➕ ADD MEMBER -->
   <div class="form">
     <input type="text" id="name" placeholder="Member Name">
     <input type="date" id="startDate">
@@ -148,13 +162,15 @@
     <button onclick="addMember()">Add Member</button>
   </div>
 
-  <!-- 🔥 SINGLE FILTER BUTTON -->
-  <div class="filter-box">
-    <button class="filter-btn" onclick="cycleFilter()">
-      <span id="filterText">ALL</span>
-    </button>
+  <!-- 🔥 FILTER BAR (ONE ROW) -->
+  <div class="filters">
+    <button class="filter-btn active" onclick="setFilter('all', this)">All</button>
+    <button class="filter-btn" onclick="setFilter('active', this)">Active</button>
+    <button class="filter-btn" onclick="setFilter('warning', this)">Renew Soon</button>
+    <button class="filter-btn" onclick="setFilter('expired', this)">Expired</button>
   </div>
 
+  <!-- TABLE -->
   <div class="table-container">
     <table>
       <thead>
@@ -191,21 +207,18 @@
   // SUPABASE
   const supabaseUrl = "https://oldaiifradpghhsjzghn.supabase.co";
   const supabaseKey = "sb_publishable_eaCeTtzXbN0yP7re8zd6zw_aT-ovkXJ";
-
   const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
 
   let members = [];
-
-  // 🔥 FILTER STATE
-  let filters = ["all", "active", "warning", "expired"];
-  let currentIndex = 0;
   let currentFilter = "all";
 
-  function cycleFilter() {
-    currentIndex = (currentIndex + 1) % filters.length;
-    currentFilter = filters[currentIndex];
+  // FILTER
+  function setFilter(type, btn) {
+    currentFilter = type;
 
-    document.getElementById("filterText").innerText = currentFilter.toUpperCase();
+    document.querySelectorAll(".filter-btn").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+
     displayMembers();
   }
 
@@ -271,7 +284,6 @@
       if (status === "Expired") color = "expired";
       if (status === "Renew Soon") color = "warning";
 
-      // FILTER
       if (currentFilter === "active" && status !== "Active") return;
       if (currentFilter === "warning" && status !== "Renew Soon") return;
       if (currentFilter === "expired" && status !== "Expired") return;
