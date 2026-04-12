@@ -17,6 +17,59 @@ body {
   color: #f2f2f2;
 }
 
+/* LOADER */
+#loader {
+  position: fixed;
+  inset: 0;
+  background: #0a0a0b;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+.loader-dumbbell {
+  width: 180px;
+  height: 40px;
+  position: relative;
+  animation: zoomIn 2s ease-out;
+}
+
+.loader-bar {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 120px;
+  height: 6px;
+  transform: translate(-50%, -50%);
+  background: linear-gradient(90deg, transparent, #e63946, transparent);
+  border-radius: 10px;
+}
+
+.loader-weight {
+  width: 34px;
+  height: 34px;
+  background: #e63946;
+  border-radius: 6px;
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.loader-weight.left { left: 0; }
+.loader-weight.right { right: 0; }
+
+@keyframes zoomIn {
+  0% { transform: scale(0.3); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+#loader.hide {
+  opacity: 0;
+  transition: 0.6s;
+  pointer-events: none;
+}
+
 /* LOGIN */
 #loginBox {
   max-width: 360px;
@@ -64,6 +117,11 @@ button {
   margin-bottom: 10px;
 }
 
+.header h1 {
+  font-size: 24px;
+}
+
+/* LOGOUT ICON */
 .icon-btn {
   width: 38px;
   height: 38px;
@@ -207,6 +265,16 @@ button {
 
 <body>
 
+<!-- LOADER -->
+<div id="loader">
+  <div class="loader-dumbbell">
+    <div class="loader-bar"></div>
+    <div class="loader-weight left"></div>
+    <div class="loader-weight right"></div>
+  </div>
+</div>
+
+<!-- LOGIN -->
 <div id="loginBox">
   <h2>Login</h2>
   <input id="username" placeholder="Username">
@@ -214,11 +282,13 @@ button {
   <button onclick="login()">Login</button>
 </div>
 
+<!-- APP -->
 <div id="app" class="container">
 
   <div class="header">
     <h1>Southwave Fitness</h1>
 
+    <!-- NIKE STYLE LOGOUT -->
     <div class="icon-btn" onclick="logout()">
       <svg viewBox="0 0 24 24">
         <path d="M10 17v-2h4v2h5v-2h2v6H3v-6h2v2h5zm2-15l5 5h-3v6h-4V7H7l5-5z"/>
@@ -226,12 +296,14 @@ button {
     </div>
   </div>
 
+  <!-- STATS -->
   <div class="stats">
     <div class="card"><h3 id="activeCount">0</h3><p>Active</p></div>
     <div class="card"><h3 id="warningCount">0</h3><p>Renew</p></div>
     <div class="card"><h3 id="expiredCount">0</h3><p>Expired</p></div>
   </div>
 
+  <!-- FORM -->
   <div class="form">
     <input id="name" placeholder="Name">
     <input id="startDate" type="date">
@@ -239,8 +311,10 @@ button {
     <button onclick="addMember()">Add</button>
   </div>
 
+  <!-- SEARCH -->
   <input id="searchInput" placeholder="Search..." oninput="displayMembers()">
 
+  <!-- FILTERS -->
   <div class="filters">
     <button class="filter-btn active" onclick="setFilter('all', this)">All</button>
     <button class="filter-btn" onclick="setFilter('active', this)">Active</button>
@@ -248,6 +322,7 @@ button {
     <button class="filter-btn" onclick="setFilter('expired', this)">Expired</button>
   </div>
 
+  <!-- MEMBERS -->
   <div class="member-grid" id="memberList"></div>
 
 </div>
@@ -261,25 +336,17 @@ const supabaseClient = supabase.createClient(
 let members = [];
 let currentFilter = "all";
 
-/* ================= AUTO LOGOUT (ADDED ONLY) ================= */
-let inactivityTimer;
-const INACTIVITY_LIMIT = 120000; // 2 minutes
-
-function resetInactivityTimer() {
-  clearTimeout(inactivityTimer);
-
-  inactivityTimer = setTimeout(() => {
-    alert("Logged out due to 2 minutes of inactivity.");
-    logout();
-  }, INACTIVITY_LIMIT);
-}
-
-/* track activity */
-["click","mousemove","keypress","scroll","touchstart"].forEach(evt => {
-  document.addEventListener(evt, resetInactivityTimer);
-});
-
 /* LOGIN */
+window.onload = () => {
+  setTimeout(() => {
+    document.getElementById("loader").classList.add("hide");
+    setTimeout(() => {
+      document.getElementById("loader").style.display = "none";
+      if (localStorage.getItem("loggedIn") === "true") loginSuccess();
+    }, 600);
+  }, 1500);
+};
+
 function login() {
   if (username.value === "admin" && password.value === "admin") {
     localStorage.setItem("loggedIn", "true");
@@ -291,33 +358,43 @@ function loginSuccess() {
   loginBox.style.display = "none";
   app.style.display = "block";
   loadMembers();
-
-  resetInactivityTimer(); // start timer on login
 }
 
-/* LOGOUT */
 function logout() {
   localStorage.removeItem("loggedIn");
   location.reload();
 }
 
-/* ADD */
+/* ADD MEMBER (FIXED) */
 async function addMember() {
   const nameVal = document.getElementById("name").value;
   const startVal = document.getElementById("startDate").value;
   const durVal = document.getElementById("duration").value;
 
-  if (!nameVal || !startVal || !durVal) return alert("Fill all fields");
+  if (!nameVal || !startVal || !durVal) {
+    alert("Fill all fields");
+    return;
+  }
 
   const exp = new Date(startVal);
   exp.setDate(exp.getDate() + parseInt(durVal));
 
-  await supabaseClient.from("members").insert([{
+  const { error } = await supabaseClient.from("members").insert([{
     name: nameVal,
     start_date: startVal,
     duration: durVal,
     expiration: exp.toISOString()
   }]);
+
+  if (error) {
+    console.log(error);
+    alert("Failed to add member");
+    return;
+  }
+
+  document.getElementById("name").value = "";
+  document.getElementById("startDate").value = "";
+  document.getElementById("duration").value = "";
 
   loadMembers();
 }
@@ -330,7 +407,7 @@ async function loadMembers() {
   updateStats();
 }
 
-/* FILTER */
+/* FILTER SYSTEM */
 function setFilter(type, btn) {
   currentFilter = type;
 
@@ -362,15 +439,22 @@ function displayMembers() {
 
     list.innerHTML += `
       <div class="member-card">
+
         <div>
           <b>${m.name}</b><br>
-          <span class="member-meta">Remaining: ${remaining} day(s)</span>
+          <span class="member-meta">
+            Remaining: ${remaining} day(s)
+          </span>
         </div>
 
         <div style="display:flex;align-items:center;">
-          <div class="status ${status}" data-tooltip="status">${status}</div>
+          <div class="status ${status}" data-tooltip="status">
+            ${status}
+          </div>
+
           <button class="delete-btn" onclick="deleteMember(${m.id})">Remove</button>
         </div>
+
       </div>
     `;
   });
