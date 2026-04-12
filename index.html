@@ -211,20 +211,36 @@ function backToApp() {
   app.style.display = "block";
 }
 
-// ADD
+// ✅ FIXED ADD MEMBER (THIS WAS YOUR BUG)
 async function addMember() {
-  const start = new Date(startDate.value);
+  const name = document.getElementById("name").value;
+  const startDate = document.getElementById("startDate").value;
+  const duration = parseInt(document.getElementById("duration").value);
+
+  if (!name || !startDate || !duration) {
+    alert("Please fill all fields");
+    return;
+  }
+
+  const start = new Date(startDate);
   const expiration = new Date(start);
-  expiration.setDate(start.getDate() + parseInt(duration.value));
+  expiration.setDate(start.getDate() + duration);
 
-  await supabaseClient.from("members").insert([{
-    name: name.value,
-    start_date: startDate.value,
-    duration: duration.value,
-    expiration: expiration.toISOString()
-  }]);
+  const { error } = await supabaseClient
+    .from("members")
+    .insert([{
+      name,
+      start_date: startDate,
+      duration,
+      expiration: expiration.toISOString()
+    }]);
 
-  loadMembers();
+  if (error) {
+    console.error(error);
+    alert("Failed to add member");
+  } else {
+    loadMembers();
+  }
 }
 
 // DELETE
@@ -281,7 +297,7 @@ function setFilter(type, btn) {
   displayMembers();
 }
 
-// CHART (INTEGER FIX INCLUDED)
+// CHART
 function renderChart() {
   let active=0, warning=0, expired=0;
 
@@ -308,10 +324,7 @@ function renderChart() {
       scales: {
         y: {
           beginAtZero: true,
-          ticks: {
-            precision: 0,
-            stepSize: 1
-          }
+          ticks: { precision: 0, stepSize: 1 }
         }
       }
     }
