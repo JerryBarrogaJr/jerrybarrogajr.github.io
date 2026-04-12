@@ -114,8 +114,14 @@ button {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  margin-bottom: 10px;
 }
 
+.header h1 {
+  font-size: 24px;
+}
+
+/* LOGOUT ICON */
 .icon-btn {
   width: 38px;
   height: 38px;
@@ -166,6 +172,29 @@ button {
   border: 1px solid rgba(255,255,255,0.08);
   color: white;
   margin-bottom: 10px;
+}
+
+/* FILTERS */
+.filters {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.filter-btn {
+  flex: 1;
+  padding: 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
+  color: #aaa;
+  cursor: pointer;
+}
+
+.filter-btn.active {
+  background: #e63946;
+  color: white;
 }
 
 /* MEMBERS */
@@ -259,7 +288,7 @@ button {
   <div class="header">
     <h1>Southwave Fitness</h1>
 
-    <!-- LOGOUT ICON -->
+    <!-- NIKE STYLE LOGOUT -->
     <div class="icon-btn" onclick="logout()">
       <svg viewBox="0 0 24 24">
         <path d="M10 17v-2h4v2h5v-2h2v6H3v-6h2v2h5zm2-15l5 5h-3v6h-4V7H7l5-5z"/>
@@ -282,8 +311,18 @@ button {
     <button onclick="addMember()">Add</button>
   </div>
 
+  <!-- SEARCH -->
   <input id="searchInput" placeholder="Search..." oninput="displayMembers()">
 
+  <!-- FILTERS -->
+  <div class="filters">
+    <button class="filter-btn active" onclick="setFilter('all', this)">All</button>
+    <button class="filter-btn" onclick="setFilter('active', this)">Active</button>
+    <button class="filter-btn" onclick="setFilter('warning', this)">Renew</button>
+    <button class="filter-btn" onclick="setFilter('expired', this)">Expired</button>
+  </div>
+
+  <!-- MEMBERS -->
   <div class="member-grid" id="memberList"></div>
 
 </div>
@@ -295,6 +334,7 @@ const supabaseClient = supabase.createClient(
 );
 
 let members = [];
+let currentFilter = "all";
 
 /* LOGIN */
 window.onload = () => {
@@ -325,7 +365,7 @@ function logout() {
   location.reload();
 }
 
-/* FIXED ADD MEMBER (THIS WAS THE ISSUE) */
+/* ADD MEMBER (FIXED) */
 async function addMember() {
   const nameVal = document.getElementById("name").value;
   const startVal = document.getElementById("startDate").value;
@@ -367,6 +407,18 @@ async function loadMembers() {
   updateStats();
 }
 
+/* FILTER SYSTEM */
+function setFilter(type, btn) {
+  currentFilter = type;
+
+  document.querySelectorAll(".filter-btn")
+    .forEach(b => b.classList.remove("active"));
+
+  btn.classList.add("active");
+
+  displayMembers();
+}
+
 /* DISPLAY */
 function displayMembers() {
   const search = searchInput.value.toLowerCase();
@@ -382,6 +434,8 @@ function displayMembers() {
     let status =
       diff < 0 ? "expired" :
       diff <= 3 ? "warning" : "active";
+
+    if (currentFilter !== "all" && currentFilter !== status) return;
 
     list.innerHTML += `
       <div class="member-card">
