@@ -1,168 +1,150 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Gym Membership Tracker</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gym Membership Tracker</title>
 
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-  <style>
-    * { box-sizing: border-box; }
+<style>
+* { box-sizing: border-box; }
 
-    body {
-      font-family: Arial, sans-serif;
-      background: linear-gradient(135deg, #0f0f0f, #1a1a1a);
-      color: white;
-      margin: 0;
-      padding: 15px;
-    }
+body {
+  font-family: Arial;
+  background: linear-gradient(135deg, #0f0f0f, #1a1a1a);
+  color: white;
+  margin: 0;
+  padding: 15px;
+}
 
-    .container {
-      max-width: 1000px;
-      margin: auto;
-    }
+.container {
+  max-width: 1000px;
+  margin: auto;
+  position: relative;
+}
 
-    h1 {
-      text-align: center;
-      font-size: 24px;
-      margin-bottom: 20px;
-    }
+.top-btn {
+  position: absolute;
+  right: 0;
+  top: 0;
+  background: #00c853;
+  padding: 10px 15px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: bold;
+}
 
-    /* 🔐 LOGIN */
-    #loginBox {
-      max-width: 350px;
-      margin: 120px auto;
-      background: #1f1f1f;
-      padding: 20px;
-      border-radius: 12px;
-    }
+#loginBox {
+  max-width: 350px;
+  margin: 120px auto;
+  background: #1f1f1f;
+  padding: 20px;
+  border-radius: 12px;
+}
 
-    input, button {
-      padding: 12px;
-      border-radius: 8px;
-      border: none;
-      font-size: 14px;
-      width: 100%;
-      margin: 6px 0;
-    }
+input, button {
+  padding: 12px;
+  border-radius: 8px;
+  border: none;
+  font-size: 14px;
+  width: 100%;
+  margin: 6px 0;
+}
 
-    input {
-      background: #2a2a2a;
-      color: white;
-    }
+input {
+  background: #2a2a2a;
+  color: white;
+}
 
-    button {
-      background: #00c853;
-      color: white;
-      cursor: pointer;
-      font-weight: bold;
-    }
+button {
+  background: #00c853;
+  color: white;
+  cursor: pointer;
+  font-weight: bold;
+}
 
-    #app {
-      display: none;
-    }
+.delete-btn { background: #ff1744; }
 
-    /* ➕ FORM */
-    .form {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      background: #1f1f1f;
-      padding: 15px;
-      border-radius: 12px;
-      margin-bottom: 10px;
-    }
+#app, #dashboardPage { display: none; }
 
-    .form input {
-      flex: 1;
-      min-width: 120px;
-    }
+.form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  background: #1f1f1f;
+  padding: 15px;
+  border-radius: 12px;
+}
 
-    .delete-btn {
-      background: #ff1744;
-    }
+.filters {
+  display: flex;
+  gap: 10px;
+  margin: 10px 0;
+}
 
-    /* 🔥 FILTER BAR (SINGLE ROW FIX) */
-    .filters {
-      display: flex;
-      flex-wrap: nowrap;   /* ❗ IMPORTANT FIX */
-      overflow-x: auto;    /* allows scroll if small screen */
-      gap: 10px;
-      margin: 10px 0 15px 0;
-      padding-bottom: 5px;
-    }
+.filter-btn {
+  flex: 1;
+  background: #333;
+  padding: 10px;
+  border-radius: 8px;
+}
 
-    .filter-btn {
-      flex: 1;             /* equal width */
-      min-width: 120px;    /* keeps readable size */
-      background: #333;
-      padding: 10px;
-      border-radius: 8px;
-      border: none;
-      cursor: pointer;
-      white-space: nowrap;
-    }
+.filter-btn.active {
+  background: #00c853;
+  color: black;
+}
 
-    .filter-btn.active {
-      background: #00c853;
-      color: black;
-      font-weight: bold;
-    }
+.table-container {
+  background: #1f1f1f;
+  padding: 10px;
+  border-radius: 12px;
+}
 
-    /* TABLE */
-    .table-container {
-      overflow-x: auto;
-      background: #1f1f1f;
-      padding: 10px;
-      border-radius: 12px;
-    }
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
 
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      min-width: 700px;
-    }
+td, th {
+  padding: 10px;
+  text-align: center;
+  border-bottom: 1px solid #333;
+}
 
-    th, td {
-      padding: 12px;
-      border-bottom: 1px solid #333;
-      text-align: center;
-      font-size: 14px;
-    }
-
-    th { color: #aaa; }
-
-    .expired { color: #ff5252; font-weight: bold; }
-    .warning { color: #ffb300; font-weight: bold; }
-    .active { color: #00e676; font-weight: bold; }
-  </style>
+.dashboard-box {
+  background: #1f1f1f;
+  padding: 20px;
+  border-radius: 12px;
+}
+</style>
 </head>
 
 <body>
 
-<!-- 🔐 LOGIN -->
+<!-- LOGIN -->
 <div id="loginBox">
-  <h2 style="text-align:center;">Admin Login</h2>
-  <input type="text" id="username" placeholder="Username">
-  <input type="password" id="password" placeholder="Password">
+  <h2>Admin Login</h2>
+  <input id="username" placeholder="Username">
+  <input id="password" type="password" placeholder="Password">
   <button onclick="login()">Login</button>
 </div>
 
-<!-- APP -->
+<!-- MAIN APP -->
 <div id="app" class="container">
 
-  <h1>Southwave Membership Tracker</h1>
+  <div class="top-btn" onclick="openDashboard()">Dashboard</div>
 
-  <!-- ➕ ADD MEMBER -->
+  <h1>Southwave Membership</h1>
+
   <div class="form">
-    <input type="text" id="name" placeholder="Member Name">
-    <input type="date" id="startDate">
-    <input type="number" id="duration" placeholder="Days">
-    <button onclick="addMember()">Add Member</button>
+    <input id="name" placeholder="Name">
+    <input id="startDate" type="date">
+    <input id="duration" type="number" placeholder="Days">
+    <button onclick="addMember()">Add</button>
   </div>
 
-  <!-- 🔥 FILTER BAR (ONE ROW) -->
   <div class="filters">
     <button class="filter-btn active" onclick="setFilter('all', this)">All</button>
     <button class="filter-btn" onclick="setFilter('active', this)">Active</button>
@@ -170,136 +152,171 @@
     <button class="filter-btn" onclick="setFilter('expired', this)">Expired</button>
   </div>
 
-  <!-- TABLE -->
   <div class="table-container">
     <table>
       <thead>
         <tr>
-          <th>Name</th>
-          <th>Start</th>
-          <th>Expiration</th>
-          <th>Remaining</th>
-          <th>Status</th>
-          <th>Action</th>
+          <th>Name</th><th>Start</th><th>Expiration</th>
+          <th>Remaining</th><th>Status</th><th>Action</th>
         </tr>
       </thead>
       <tbody id="memberList"></tbody>
     </table>
   </div>
+</div>
+
+<!-- DASHBOARD -->
+<div id="dashboardPage" class="container">
+
+  <div class="top-btn" onclick="backToApp()">Back</div>
+
+  <h1>Dashboard</h1>
+
+  <div class="dashboard-box">
+    <canvas id="chart"></canvas>
+  </div>
 
 </div>
 
 <script>
-  // LOGIN
-  function login() {
-    const user = document.getElementById("username").value;
-    const pass = document.getElementById("password").value;
+const supabaseClient = supabase.createClient(
+  "https://oldaiifradpghhsjzghn.supabase.co",
+  "sb_publishable_eaCeTtzXbN0yP7re8zd6zw_aT-ovkXJ"
+);
 
-    if (user === "admin" && pass === "admin") {
-      document.getElementById("loginBox").style.display = "none";
-      document.getElementById("app").style.display = "block";
-      loadMembers();
-    } else {
-      alert("Wrong username or password");
+let members = [];
+let currentFilter = "all";
+let chart;
+
+// LOGIN
+function login() {
+  if (username.value === "admin" && password.value === "admin") {
+    loginBox.style.display = "none";
+    app.style.display = "block";
+    loadMembers();
+  } else {
+    alert("Wrong login");
+  }
+}
+
+// NAV
+function openDashboard() {
+  app.style.display = "none";
+  dashboardPage.style.display = "block";
+  renderChart();
+}
+
+function backToApp() {
+  dashboardPage.style.display = "none";
+  app.style.display = "block";
+}
+
+// ADD
+async function addMember() {
+  const start = new Date(startDate.value);
+  const expiration = new Date(start);
+  expiration.setDate(start.getDate() + parseInt(duration.value));
+
+  await supabaseClient.from("members").insert([{
+    name: name.value,
+    start_date: startDate.value,
+    duration: duration.value,
+    expiration: expiration.toISOString()
+  }]);
+
+  loadMembers();
+}
+
+// DELETE
+async function deleteMember(id) {
+  await supabaseClient.from("members").delete().eq("id", id);
+  loadMembers();
+}
+
+// LOAD
+async function loadMembers() {
+  const { data } = await supabaseClient.from("members").select("*");
+  members = data || [];
+  displayMembers();
+}
+
+// STATUS
+function getStatus(exp) {
+  const diff = (new Date(exp) - new Date()) / 86400000;
+  if (diff < 0) return "Expired";
+  if (diff <= 3) return "Renew Soon";
+  return "Active";
+}
+
+// DISPLAY
+function displayMembers() {
+  memberList.innerHTML = "";
+
+  members.forEach(m => {
+    const status = getStatus(m.expiration);
+
+    if (currentFilter !== "all" &&
+      (currentFilter === "active" && status !== "Active" ||
+       currentFilter === "warning" && status !== "Renew Soon" ||
+       currentFilter === "expired" && status !== "Expired")) return;
+
+    memberList.innerHTML += `
+      <tr>
+        <td>${m.name}</td>
+        <td>${m.start_date}</td>
+        <td>${new Date(m.expiration).toLocaleDateString()}</td>
+        <td>${Math.max(0, Math.ceil((new Date(m.expiration)-new Date())/86400000))}</td>
+        <td>${status}</td>
+        <td><button class="delete-btn" onclick="deleteMember(${m.id})">Remove</button></td>
+      </tr>
+    `;
+  });
+}
+
+// FILTER
+function setFilter(type, btn) {
+  currentFilter = type;
+  document.querySelectorAll(".filter-btn").forEach(b => b.classList.remove("active"));
+  btn.classList.add("active");
+  displayMembers();
+}
+
+// CHART (INTEGER FIX INCLUDED)
+function renderChart() {
+  let active=0, warning=0, expired=0;
+
+  members.forEach(m=>{
+    const s = getStatus(m.expiration);
+    if(s==="Active") active++;
+    else if(s==="Renew Soon") warning++;
+    else expired++;
+  });
+
+  if(chart) chart.destroy();
+
+  chart = new Chart(document.getElementById("chart"), {
+    type: "bar",
+    data: {
+      labels: ["Active", "Renew Soon", "Expired"],
+      datasets: [{
+        data: [active, warning, expired],
+        backgroundColor: ["#00e676","#ffb300","#ff5252"]
+      }]
+    },
+    options: {
+      plugins: { legend: { display: false } },
+      scales: {
+        y: {
+          beginAtZero: true,
+          ticks: {
+            precision: 0,
+            stepSize: 1
+          }
+        }
+      }
     }
-  }
-
-  // SUPABASE
-  const supabaseUrl = "https://oldaiifradpghhsjzghn.supabase.co";
-  const supabaseKey = "sb_publishable_eaCeTtzXbN0yP7re8zd6zw_aT-ovkXJ";
-  const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
-
-  let members = [];
-  let currentFilter = "all";
-
-  // FILTER
-  function setFilter(type, btn) {
-    currentFilter = type;
-
-    document.querySelectorAll(".filter-btn").forEach(b => b.classList.remove("active"));
-    btn.classList.add("active");
-
-    displayMembers();
-  }
-
-  // ADD
-  async function addMember() {
-    const name = document.getElementById("name").value;
-    const startDate = document.getElementById("startDate").value;
-    const duration = parseInt(document.getElementById("duration").value);
-
-    const start = new Date(startDate);
-    const expiration = new Date(start);
-    expiration.setDate(expiration.getDate() + duration);
-
-    await supabaseClient.from("members").insert([{
-      name,
-      start_date: startDate,
-      duration,
-      expiration: expiration.toISOString()
-    }]);
-
-    loadMembers();
-  }
-
-  // DELETE
-  async function deleteMember(id) {
-    await supabaseClient.from("members").delete().eq("id", id);
-    loadMembers();
-  }
-
-  // LOAD
-  async function loadMembers() {
-    const { data } = await supabaseClient
-      .from("members")
-      .select("*")
-      .order("id", { ascending: false });
-
-    members = data || [];
-    displayMembers();
-  }
-
-  // STATUS
-  function getStatus(exp) {
-    const diff = (new Date(exp) - new Date()) / 86400000;
-    if (diff < 0) return "Expired";
-    if (diff <= 3) return "Renew Soon";
-    return "Active";
-  }
-
-  function getRemaining(exp) {
-    return Math.max(0, Math.ceil((new Date(exp) - new Date()) / 86400000));
-  }
-
-  // DISPLAY
-  function displayMembers() {
-    const table = document.getElementById("memberList");
-    table.innerHTML = "";
-
-    members.forEach(m => {
-      const status = getStatus(m.expiration);
-      const remaining = getRemaining(m.expiration);
-
-      let color = "active";
-      if (status === "Expired") color = "expired";
-      if (status === "Renew Soon") color = "warning";
-
-      if (currentFilter === "active" && status !== "Active") return;
-      if (currentFilter === "warning" && status !== "Renew Soon") return;
-      if (currentFilter === "expired" && status !== "Expired") return;
-
-      table.innerHTML += `
-        <tr>
-          <td>${m.name}</td>
-          <td>${m.start_date}</td>
-          <td>${new Date(m.expiration).toLocaleDateString()}</td>
-          <td>${remaining}</td>
-          <td class="${color}">${status}</td>
-          <td><button class="delete-btn" onclick="deleteMember(${m.id})">Remove</button></td>
-        </tr>
-      `;
-    });
-  }
+  });
+}
 </script>
 
 </body>
