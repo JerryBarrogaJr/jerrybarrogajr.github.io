@@ -122,7 +122,255 @@
     const today = new Date();
     const exp = new Date(expiration);
     let diff = Math.ceil((exp - today) / (1000 * 60 * 60 * 24));
+    return diff < 0 ? 0 : diff;<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gym Membership Tracker</title>
+
+  <style>
+    * { box-sizing: border-box; }
+
+    body {
+      font-family: Arial, sans-serif;
+      background: linear-gradient(135deg, #0f0f0f, #1a1a1a);
+      color: white;
+      margin: 0;
+      padding: 15px;
+    }
+
+    .container {
+      max-width: 1000px;
+      margin: auto;
+    }
+
+    h1 {
+      text-align: center;
+      font-size: 24px;
+      margin-bottom: 20px;
+    }
+
+    .form {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      background: #1f1f1f;
+      padding: 15px;
+      border-radius: 12px;
+      margin-bottom: 20px;
+    }
+
+    input, button {
+      padding: 12px;
+      border-radius: 8px;
+      border: none;
+      font-size: 14px;
+    }
+
+    input {
+      flex: 1;
+      min-width: 120px;
+      background: #2a2a2a;
+      color: white;
+    }
+
+    button {
+      background: #00c853;
+      color: white;
+      cursor: pointer;
+      font-weight: bold;
+      min-width: 120px;
+    }
+
+    .delete-btn {
+      background: #ff1744;
+    }
+
+    /* TABLE VIEW (DESKTOP) */
+    .table-container {
+      overflow-x: auto;
+      background: #1f1f1f;
+      padding: 10px;
+      border-radius: 12px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 700px;
+    }
+
+    th, td {
+      padding: 12px;
+      border-bottom: 1px solid #333;
+      text-align: center;
+      font-size: 14px;
+    }
+
+    th { color: #aaa; }
+
+    /* MOBILE CARDS (HIDDEN BY DEFAULT) */
+    #mobileCards {
+      display: none;
+    }
+
+    .card {
+      background: #1f1f1f;
+      padding: 12px;
+      margin-bottom: 10px;
+      border-radius: 12px;
+    }
+
+    .card div {
+      margin: 5px 0;
+      font-size: 13px;
+    }
+
+    .expired { color: #ff5252; font-weight: bold; }
+    .warning { color: #ffb300; font-weight: bold; }
+    .active { color: #00e676; font-weight: bold; }
+
+    /* MOBILE VIEW */
+    @media (max-width: 600px) {
+      .table-container {
+        display: none;
+      }
+
+      #mobileCards {
+        display: block;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <h1>Southwave Membership Tracker</h1>
+
+  <div class="form">
+    <input type="text" id="name" placeholder="Member Name">
+    <input type="date" id="startDate">
+    <input type="number" id="duration" placeholder="Days">
+    <button onclick="addMember()">Add Member</button>
+  </div>
+
+  <!-- DESKTOP TABLE -->
+  <div class="table-container">
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Start</th>
+          <th>Expiration</th>
+          <th>Remaining</th>
+          <th>Status</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody id="memberList"></tbody>
+    </table>
+  </div>
+
+  <!-- MOBILE CARDS -->
+  <div id="mobileCards"></div>
+</div>
+
+<script>
+  let members = JSON.parse(localStorage.getItem("members")) || [];
+
+  function addMember() {
+    const name = document.getElementById("name").value;
+    const startDate = document.getElementById("startDate").value;
+    const duration = parseInt(document.getElementById("duration").value);
+
+    if (!name || !startDate || !duration) {
+      alert("Please fill all fields");
+      return;
+    }
+
+    const start = new Date(startDate);
+    const expiration = new Date(start);
+    expiration.setDate(expiration.getDate() + duration);
+
+    members.push({ name, startDate, duration, expiration });
+    localStorage.setItem("members", JSON.stringify(members));
+
+    displayMembers();
+  }
+
+  function deleteMember(index) {
+    if (confirm("Remove this member?")) {
+      members.splice(index, 1);
+      localStorage.setItem("members", JSON.stringify(members));
+      displayMembers();
+    }
+  }
+
+  function getStatus(expiration) {
+    const today = new Date();
+    const exp = new Date(expiration);
+    const diff = (exp - today) / (1000 * 60 * 60 * 24);
+
+    if (diff < 0) return "Expired";
+    if (diff <= 3) return "Renew Soon";
+    return "Active";
+  }
+
+  function getRemainingDays(expiration) {
+    const today = new Date();
+    const exp = new Date(expiration);
+    let diff = Math.ceil((exp - today) / (1000 * 60 * 60 * 24));
     return diff < 0 ? 0 : diff;
+  }
+
+  function displayMembers() {
+    const table = document.getElementById("memberList");
+    const cards = document.getElementById("mobileCards");
+
+    table.innerHTML = "";
+    cards.innerHTML = "";
+
+    members.forEach((m, index) => {
+      const status = getStatus(m.expiration);
+      const remaining = getRemainingDays(m.expiration);
+
+      let color = "active";
+      if (status === "Expired") color = "expired";
+      if (status === "Renew Soon") color = "warning";
+
+      // TABLE
+      table.innerHTML += `
+        <tr>
+          <td>${m.name}</td>
+          <td>${m.startDate}</td>
+          <td>${new Date(m.expiration).toLocaleDateString()}</td>
+          <td>${remaining}</td>
+          <td class="${color}">${status}</td>
+          <td><button class="delete-btn" onclick="deleteMember(${index})">Remove</button></td>
+        </tr>
+      `;
+
+      // MOBILE CARD
+      cards.innerHTML += `
+        <div class="card">
+          <div><b>Name:</b> ${m.name}</div>
+          <div><b>Start:</b> ${m.startDate}</div>
+          <div><b>Expiration:</b> ${new Date(m.expiration).toLocaleDateString()}</div>
+          <div><b>Remaining:</b> ${remaining} days</div>
+          <div class="${color}"><b>Status:</b> ${status}</div>
+          <button class="delete-btn" onclick="deleteMember(${index})">Remove</button>
+        </div>
+      `;
+    });
+  }
+
+  displayMembers();
+</script>
+
+</body>
+</html>
+
   }
 
   async function loadMembers() {
