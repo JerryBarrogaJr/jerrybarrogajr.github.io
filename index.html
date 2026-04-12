@@ -29,13 +29,14 @@
       margin-bottom: 20px;
     }
 
-    /* 🔐 LOGIN */
-    #loginBox {
-      max-width: 350px;
-      margin: 100px auto;
+    .form {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
       background: #1f1f1f;
-      padding: 20px;
+      padding: 15px;
       border-radius: 12px;
+      margin-bottom: 10px;
     }
 
     input, button {
@@ -43,11 +44,11 @@
       border-radius: 8px;
       border: none;
       font-size: 14px;
-      width: 100%;
-      margin: 5px 0;
     }
 
     input {
+      flex: 1;
+      min-width: 120px;
       background: #2a2a2a;
       color: white;
     }
@@ -57,20 +58,11 @@
       color: white;
       cursor: pointer;
       font-weight: bold;
+      min-width: 120px;
     }
 
     .delete-btn {
       background: #ff1744;
-    }
-
-    .form {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      background: #1f1f1f;
-      padding: 15px;
-      border-radius: 12px;
-      margin-bottom: 20px;
     }
 
     .table-container {
@@ -95,29 +87,36 @@
 
     th { color: #aaa; }
 
-    #app { display: none; }
-
     .expired { color: #ff5252; font-weight: bold; }
     .warning { color: #ffb300; font-weight: bold; }
     .active { color: #00e676; font-weight: bold; }
+
+    /* 🔥 FILTER BUTTONS */
+    .filters {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin: 10px 0 20px 0;
+      justify-content: center;
+    }
+
+    .filters button {
+      background: #333;
+      min-width: 100px;
+    }
+
+    .filters button.active {
+      background: #00c853;
+    }
   </style>
 </head>
 
 <body>
 
-<!-- 🔐 LOGIN SCREEN -->
-<div id="loginBox">
-  <h2 style="text-align:center;">Admin Login</h2>
-  <input type="text" id="username" placeholder="Username">
-  <input type="password" id="password" placeholder="Password">
-  <button onclick="login()">Login</button>
-</div>
-
-<!-- 📊 APP -->
-<div id="app" class="container">
-
+<div class="container">
   <h1>Southwave Membership Tracker</h1>
 
+  <!-- ➕ ADD MEMBER -->
   <div class="form">
     <input type="text" id="name" placeholder="Member Name">
     <input type="date" id="startDate">
@@ -125,6 +124,15 @@
     <button onclick="addMember()">Add Member</button>
   </div>
 
+  <!-- 🔥 FILTER SYSTEM -->
+  <div class="filters">
+    <button onclick="setFilter('all')" class="active">All</button>
+    <button onclick="setFilter('active')">Active</button>
+    <button onclick="setFilter('warning')">Renew Soon</button>
+    <button onclick="setFilter('expired')">Expired</button>
+  </div>
+
+  <!-- 📋 TABLE -->
   <div class="table-container">
     <table>
       <thead>
@@ -140,31 +148,16 @@
       <tbody id="memberList"></tbody>
     </table>
   </div>
-
 </div>
 
 <script>
-  // 🔐 SIMPLE LOGIN
-  function login() {
-    const user = document.getElementById("username").value;
-    const pass = document.getElementById("password").value;
-
-    if (user === "admin" && pass === "admin") {
-      document.getElementById("loginBox").style.display = "none";
-      document.getElementById("app").style.display = "block";
-      loadMembers();
-    } else {
-      alert("Wrong username or password");
-    }
-  }
-
-  // ✅ SUPABASE
   const supabaseUrl = "https://oldaiifradpghhsjzghn.supabase.co";
   const supabaseKey = "sb_publishable_eaCeTtzXbN0yP7re8zd6zw_aT-ovkXJ";
 
   const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
 
   let members = [];
+  let currentFilter = "all";
 
   // ➕ ADD MEMBER
   async function addMember() {
@@ -186,6 +179,12 @@
     loadMembers();
   }
 
+  // ❌ DELETE
+  async function deleteMember(id) {
+    await supabaseClient.from("members").delete().eq("id", id);
+    loadMembers();
+  }
+
   // 📥 LOAD
   async function loadMembers() {
     const { data } = await supabaseClient
@@ -195,12 +194,6 @@
 
     members = data;
     displayMembers();
-  }
-
-  // ❌ DELETE
-  async function deleteMember(id) {
-    await supabaseClient.from("members").delete().eq("id", id);
-    loadMembers();
   }
 
   // 📊 STATUS
@@ -215,7 +208,20 @@
     return Math.max(0, Math.ceil((new Date(exp) - new Date()) / 86400000));
   }
 
-  // 📋 DISPLAY
+  // 🔥 FILTER
+  function setFilter(type) {
+    currentFilter = type;
+
+    document.querySelectorAll(".filters button").forEach(btn => {
+      btn.classList.remove("active");
+    });
+
+    event.target.classList.add("active");
+
+    displayMembers();
+  }
+
+  // 📋 DISPLAY (FILTERED)
   function displayMembers() {
     const table = document.getElementById("memberList");
     table.innerHTML = "";
@@ -227,6 +233,11 @@
       let color = "active";
       if (status === "Expired") color = "expired";
       if (status === "Renew Soon") color = "warning";
+
+      // 🔥 FILTER LOGIC
+      if (currentFilter === "active" && status !== "Active") return;
+      if (currentFilter === "warning" && status !== "Renew Soon") return;
+      if (currentFilter === "expired" && status !== "Expired") return;
 
       table.innerHTML += `
         <tr>
@@ -240,6 +251,8 @@
       `;
     });
   }
+
+  loadMembers();
 </script>
 
 </body>
