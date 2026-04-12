@@ -3,243 +3,307 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Gym Membership Tracker</title>
+<title>Southwave Fitness</title>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
 * { box-sizing: border-box; }
 
 body {
-  font-family: Arial;
-  background: linear-gradient(135deg, #0f0f0f, #1a1a1a);
-  color: white;
   margin: 0;
-  padding: 15px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial;
+  background: #0a0a0b;
+  color: #f2f2f2;
 }
 
-.container {
-  max-width: 1000px;
-  margin: auto;
+/* =========================
+   LOADER (NIKE STYLE)
+========================= */
+#loader {
+  position: fixed;
+  inset: 0;
+  background: #0a0a0b;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  z-index: 9999;
+}
+
+.loader-dumbbell {
+  width: 180px;
+  height: 40px;
   position: relative;
+  animation: zoomIn 2s ease-out;
 }
 
-.top-btn {
+.loader-bar {
   position: absolute;
-  top: 0;
-  padding: 10px 15px;
-  border-radius: 8px;
-  cursor: pointer;
-  font-weight: bold;
+  top: 50%;
+  left: 50%;
+  width: 120px;
+  height: 6px;
+  transform: translate(-50%, -50%);
+  background: linear-gradient(90deg, transparent, #e63946, transparent);
+  border-radius: 10px;
 }
 
-.dashboard-btn {
-  right: 110px;
-  background: #00c853;
+.loader-weight {
+  width: 34px;
+  height: 34px;
+  background: #e63946;
+  border-radius: 6px;
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
 }
 
-.logout-btn {
-  right: 0;
-  background: #ff1744;
+.loader-weight.left { left: 0; }
+.loader-weight.right { right: 0; }
+
+@keyframes zoomIn {
+  0% { transform: scale(0.3); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
 }
 
+#loader.hide {
+  opacity: 0;
+  transition: 0.6s;
+  pointer-events: none;
+}
+
+/* =========================
+   LOGIN
+========================= */
 #loginBox {
-  max-width: 350px;
+  max-width: 360px;
   margin: 120px auto;
-  background: #1f1f1f;
-  padding: 20px;
-  border-radius: 12px;
-}
-
-input, button {
-  padding: 12px;
-  border-radius: 8px;
-  border: none;
-  font-size: 14px;
-  width: 100%;
-  margin: 6px 0;
+  padding: 24px;
+  border-radius: 16px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
 }
 
 input {
-  background: #2a2a2a;
+  width: 100%;
+  padding: 12px;
+  margin: 6px 0;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(255,255,255,0.03);
   color: white;
 }
 
 button {
-  background: #00c853;
+  width: 100%;
+  padding: 12px;
+  margin-top: 8px;
+  border-radius: 10px;
+  border: none;
+  background: #e63946;
   color: white;
   cursor: pointer;
-  font-weight: bold;
 }
 
-.delete-btn { background: #ff1744; }
+/* =========================
+   APP LAYOUT
+========================= */
+.container {
+  max-width: 1100px;
+  margin: auto;
+  padding: 16px;
+  display: none;
+}
 
-#app, #dashboardPage { display: none; }
-
-.form {
+/* HEADER (NIKE CLEAN) */
+.header {
   display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  background: #1f1f1f;
-  padding: 15px;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.header h1 {
+  font-size: 24px;
+  letter-spacing: 1px;
+}
+
+/* NIKE STYLE LOGOUT ICON */
+.icon-btn {
+  width: 38px;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   border-radius: 12px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.08);
+  cursor: pointer;
 }
 
-.filters {
-  display: flex;
+.icon-btn svg {
+  width: 18px;
+  height: 18px;
+  fill: white;
+}
+
+/* DASHBOARD ONLY VIEW */
+#dashboard {
+  display: none;
+}
+
+/* STATS */
+.stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
   gap: 10px;
-  margin: 10px 0;
+  margin-bottom: 12px;
 }
 
-.filter-btn {
-  flex: 1;
-  background: #333;
-  padding: 10px;
-  border-radius: 8px;
+.card {
+  padding: 14px;
+  border-radius: 14px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
 }
 
-.filter-btn.active {
-  background: #00c853;
-  color: black;
+/* FORM */
+.form {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 10px;
 }
 
 #searchInput {
   width: 100%;
   padding: 12px;
-  margin: 10px 0;
-  border-radius: 8px;
-  border: none;
-  background: #2a2a2a;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.08);
   color: white;
+  margin-bottom: 10px;
 }
 
-.status-badge {
+/* MEMBERS */
+.member-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.member-card {
+  padding: 14px;
+  border-radius: 14px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
+  display: flex;
+  justify-content: space-between;
+}
+
+.member-meta {
+  font-size: 12px;
+  color: #aaa;
+}
+
+/* STATUS */
+.status {
+  font-size: 12px;
   padding: 6px 10px;
   border-radius: 999px;
-  font-size: 12px;
-  font-weight: bold;
-  display: inline-block;
   position: relative;
-  cursor: pointer;
 }
 
-.status-badge::after {
+.active { color: #4ade80; }
+.warning { color: #fbbf24; }
+.expired { color: #9ca3af; }
+
+.status::after {
   content: attr(data-tooltip);
   position: absolute;
   bottom: 130%;
   left: 50%;
   transform: translateX(-50%);
-  background: #000;
+  background: rgba(0,0,0,0.85);
   padding: 6px 10px;
-  border-radius: 6px;
-  font-size: 12px;
+  border-radius: 8px;
+  font-size: 11px;
   opacity: 0;
-  transition: 0.2s;
   white-space: nowrap;
+  transition: 0.2s;
 }
 
-.status-badge:hover::after {
+.status:hover::after {
   opacity: 1;
 }
 
-.badge-active {
-  background: rgba(0, 230, 118, 0.15);
-  color: #00e676;
-}
-
-.badge-warning {
-  background: rgba(255, 179, 0, 0.15);
-  color: #ffb300;
-}
-
-.badge-expired {
-  background: rgba(255, 82, 82, 0.15);
-  color: #ff5252;
-}
-
-.table-container {
-  background: #1f1f1f;
-  padding: 10px;
-  border-radius: 12px;
-}
-
-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-td, th {
-  padding: 10px;
-  text-align: center;
-  border-bottom: 1px solid #333;
-}
-
-.dashboard-box {
-  background: #1f1f1f;
-  padding: 20px;
-  border-radius: 12px;
+.delete-btn {
+  margin-left: 10px;
+  padding: 6px 10px;
+  font-size: 11px;
+  border-radius: 8px;
+  background: #ff3b3b;
+  border: none;
+  color: white;
+  cursor: pointer;
 }
 </style>
 </head>
 
 <body>
 
+<!-- LOADER -->
+<div id="loader">
+  <div class="loader-dumbbell">
+    <div class="loader-bar"></div>
+    <div class="loader-weight left"></div>
+    <div class="loader-weight right"></div>
+  </div>
+</div>
+
+<!-- LOGIN -->
 <div id="loginBox">
-  <h2>Admin Login</h2>
+  <h2>Login</h2>
   <input id="username" placeholder="Username">
   <input id="password" type="password" placeholder="Password">
   <button onclick="login()">Login</button>
 </div>
 
+<!-- APP -->
 <div id="app" class="container">
 
-  <div class="top-btn dashboard-btn" onclick="openDashboard()">Dashboard</div>
-  <div class="top-btn logout-btn" onclick="logout()">Logout</div>
+  <!-- HEADER -->
+  <div class="header">
+    <h1>Southwave</h1>
 
-  <h1>Southwave Fitness Membership Tracker</h1>
-
-  <div class="form">
-    <input id="name" placeholder="Name">
-    <input id="startDate" type="date">
-    <input id="duration" type="number" placeholder="Days">
-    <button onclick="addMember()">Add</button>
+    <!-- NIKE STYLE LOGOUT ICON -->
+    <div class="icon-btn" onclick="logout()">
+      <svg viewBox="0 0 24 24">
+        <path d="M10 17v-2h4v2h5v-2h2v6H3v-6h2v2h5zm2-15l5 5h-3v6h-4V7H7l5-5z"/>
+      </svg>
+    </div>
   </div>
 
-  <input id="searchInput" placeholder="Search member name..." oninput="displayMembers()" />
+  <!-- DASHBOARD ONLY -->
+  <div id="dashboard">
 
-  <div class="filters">
-    <button class="filter-btn active" onclick="setFilter('all', this)">All</button>
-    <button class="filter-btn" onclick="setFilter('active', this)">Active</button>
-    <button class="filter-btn" onclick="setFilter('warning', this)">Renew Soon</button>
-    <button class="filter-btn" onclick="setFilter('expired', this)">Expired</button>
-  </div>
+    <div class="stats">
+      <div class="card"><h3 id="activeCount">0</h3><p>Active</p></div>
+      <div class="card"><h3 id="warningCount">0</h3><p>Renew</p></div>
+      <div class="card"><h3 id="expiredCount">0</h3><p>Expired</p></div>
+    </div>
 
-  <div class="table-container">
-    <table>
-      <thead>
-        <tr>
-          <th>Name</th>
-          <th>Start</th>
-          <th>Expiration</th>
-          <th>Remaining</th>
-          <th>Status</th>
-          <th>Action</th>
-        </tr>
-      </thead>
-      <tbody id="memberList"></tbody>
-    </table>
-  </div>
-</div>
+    <div class="form">
+      <input id="name" placeholder="Name">
+      <input id="startDate" type="date">
+      <input id="duration" type="number" placeholder="Days">
+      <button onclick="addMember()">Add</button>
+    </div>
 
-<div id="dashboardPage" class="container">
-  <div class="top-btn dashboard-btn" onclick="backToApp()">Back</div>
-  <div class="top-btn logout-btn" onclick="logout()">Logout</div>
+    <input id="searchInput" placeholder="Search..." oninput="displayMembers()">
 
-  <h1>Dashboard</h1>
+    <div class="member-grid" id="memberList"></div>
 
-  <div class="dashboard-box">
-    <canvas id="chart"></canvas>
   </div>
 </div>
 
@@ -250,156 +314,124 @@ const supabaseClient = supabase.createClient(
 );
 
 let members = [];
-let currentFilter = "all";
-let chart;
 
-function formatDate(dateString) {
-  const date = new Date(dateString);
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  const year = date.getFullYear();
-  return `${month}/${day}/${year}`;
-}
+/* loader */
+window.onload = () => {
+  setTimeout(() => {
+    document.getElementById("loader").classList.add("hide");
 
-window.onload = function() {
-  if (localStorage.getItem("loggedIn") === "true") {
-    document.getElementById("loginBox").style.display = "none";
-    document.getElementById("app").style.display = "block";
-    loadMembers();
-  }
+    setTimeout(() => {
+      document.getElementById("loader").style.display = "none";
+
+      if (localStorage.getItem("loggedIn") === "true") {
+        loginSuccess();
+      }
+    }, 600);
+
+  }, 1500);
 };
 
+/* login */
 function login() {
   if (username.value === "admin" && password.value === "admin") {
     localStorage.setItem("loggedIn", "true");
-    document.getElementById("loginBox").style.display = "none";
-    document.getElementById("app").style.display = "block";
-    loadMembers();
-  } else alert("Wrong login");
+    loginSuccess();
+  }
 }
 
+function loginSuccess() {
+  loginBox.style.display = "none";
+  app.style.display = "block";
+  dashboard.style.display = "block";   // 👈 ONLY DASHBOARD SHOWS
+  loadMembers();
+}
+
+/* logout */
 function logout() {
   localStorage.removeItem("loggedIn");
   location.reload();
 }
 
-function openDashboard() {
-  document.getElementById("app").style.display = "none";
-  document.getElementById("dashboardPage").style.display = "block";
-  renderChart();
+/* load */
+async function loadMembers() {
+  const { data } = await supabaseClient.from("members").select("*");
+  members = data || [];
+  displayMembers();
+  updateStats();
 }
 
-function backToApp() {
-  document.getElementById("dashboardPage").style.display = "none";
-  document.getElementById("app").style.display = "block";
-}
-
+/* add */
 async function addMember() {
-  const name = document.getElementById("name").value;
-  const startDate = document.getElementById("startDate").value;
-  const duration = parseInt(document.getElementById("duration").value);
-
-  if (!name || !startDate || !duration) return alert("Fill all fields");
-
-  const start = new Date(startDate);
-  const expiration = new Date(start);
-  expiration.setDate(start.getDate() + duration);
+  const exp = new Date(startDate.value);
+  exp.setDate(exp.getDate() + parseInt(duration.value));
 
   await supabaseClient.from("members").insert([{
-    name,
-    start_date: startDate,
-    duration,
-    expiration: expiration.toISOString()
+    name: name.value,
+    start_date: startDate.value,
+    duration: duration.value,
+    expiration: exp.toISOString()
   }]);
 
   loadMembers();
 }
 
-async function loadMembers() {
-  const { data } = await supabaseClient.from("members").select("*");
-  members = data || [];
-  displayMembers();
-}
-
+/* display */
 function displayMembers() {
-  const search = document.getElementById("searchInput").value.toLowerCase();
+  const search = searchInput.value.toLowerCase();
   const list = document.getElementById("memberList");
   list.innerHTML = "";
 
   members.forEach(m => {
     if (!m.name.toLowerCase().includes(search)) return;
 
-    const diffDays = Math.ceil((new Date(m.expiration) - new Date()) / 86400000);
-    const remaining = Math.max(0, diffDays);
+    const diff = Math.ceil((new Date(m.expiration)-new Date())/86400000);
+    const remaining = Math.max(0, diff);
 
-    let status = diffDays < 0 ? "expired" : diffDays <= 3 ? "warning" : "active";
-    if (currentFilter !== "all" && currentFilter !== status) return;
-
-    let badgeClass =
-      status === "expired" ? "badge-expired" :
-      status === "warning" ? "badge-warning" :
-      "badge-active";
-
-    let statusText =
-      status === "expired" ? "Expired" :
-      status === "warning" ? "Renew Soon" :
-      "Active";
-
-    let tooltip =
-      status === "expired" ? "membership expired" :
-      `${remaining} day(s) remaining`;
+    let status =
+      diff < 0 ? "expired" :
+      diff <= 3 ? "warning" : "active";
 
     list.innerHTML += `
-      <tr>
-        <td>${m.name}</td>
-        <td>${formatDate(m.start_date)}</td>
-        <td>${formatDate(m.expiration)}</td>
-        <td>${remaining}</td>
-        <td>
-          <span class="status-badge ${badgeClass}" data-tooltip="${tooltip}">
-            ${statusText}
+      <div class="member-card">
+
+        <div>
+          <b>${m.name}</b><br>
+          <span class="member-meta">
+            Remaining: ${remaining} day(s)
           </span>
-        </td>
-        <td><button class="delete-btn" onclick="deleteMember(${m.id})">Remove</button></td>
-      </tr>
+        </div>
+
+        <div style="display:flex;align-items:center;">
+          <div class="status ${status}" data-tooltip="status">
+            ${status}
+          </div>
+
+          <button class="delete-btn" onclick="deleteMember(${m.id})">Remove</button>
+        </div>
+
+      </div>
     `;
   });
 }
 
+/* delete */
 async function deleteMember(id) {
   await supabaseClient.from("members").delete().eq("id", id);
   loadMembers();
 }
 
-function setFilter(type, btn) {
-  currentFilter = type;
-  document.querySelectorAll(".filter-btn").forEach(b => b.classList.remove("active"));
-  btn.classList.add("active");
-  displayMembers();
-}
-
-function renderChart() {
-  let active=0, warning=0, expired=0;
+/* stats */
+function updateStats() {
+  let a=0,w=0,e=0;
 
   members.forEach(m=>{
-    const diffDays = Math.ceil((new Date(m.expiration) - new Date()) / 86400000);
-    if(diffDays < 0) expired++;
-    else if(diffDays <= 3) warning++;
-    else active++;
+    const d = Math.ceil((new Date(m.expiration)-new Date())/86400000);
+    if(d<0)e++; else if(d<=3)w++; else a++;
   });
 
-  if(chart) chart.destroy();
-
-  chart = new Chart(document.getElementById("chart"), {
-    type: "bar",
-    data: {
-      labels: ["Active", "Renew Soon", "Expired"],
-      datasets: [{
-        data: [active, warning, expired],
-        backgroundColor: ["#00e676","#ffb300","#ff5252"]
-      }]
-    }
-  });
+  activeCount.innerText = a;
+  warningCount.innerText = w;
+  expiredCount.innerText = e;
 }
 </script>
 
