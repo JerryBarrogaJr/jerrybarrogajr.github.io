@@ -27,13 +27,21 @@ body {
 
 .top-btn {
   position: absolute;
-  right: 0;
   top: 0;
-  background: #00c853;
   padding: 10px 15px;
   border-radius: 8px;
   cursor: pointer;
   font-weight: bold;
+}
+
+.dashboard-btn {
+  right: 110px;
+  background: #00c853;
+}
+
+.logout-btn {
+  right: 0;
+  background: #ff1744;
 }
 
 #loginBox {
@@ -96,20 +104,66 @@ button {
   color: black;
 }
 
-/* STATUS COLORS */
-.status-active {
+/* SEARCH */
+#searchInput {
+  width: 100%;
+  padding: 12px;
+  margin: 10px 0;
+  border-radius: 8px;
+  border: none;
+  background: #2a2a2a;
+  color: white;
+}
+
+/* BADGES */
+.status-badge {
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: bold;
+  display: inline-block;
+  position: relative;
+}
+
+.badge-active {
+  background: rgba(0, 230, 118, 0.15);
   color: #00e676;
-  font-weight: bold;
 }
 
-.status-warning {
+.badge-warning {
+  background: rgba(255, 179, 0, 0.15);
   color: #ffb300;
-  font-weight: bold;
 }
 
-.status-expired {
+.badge-expired {
+  background: rgba(255, 82, 82, 0.15);
   color: #ff5252;
-  font-weight: bold;
+}
+
+/* TOOLTIP */
+.status-badge[data-tooltip] {
+  cursor: pointer;
+}
+
+.status-badge[data-tooltip]::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: 130%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #000;
+  color: #fff;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: 0.2s;
+}
+
+.status-badge[data-tooltip]:hover::after {
+  opacity: 1;
 }
 
 .table-container {
@@ -147,12 +201,13 @@ td, th {
   <button onclick="login()">Login</button>
 </div>
 
-<!-- MAIN APP -->
+<!-- APP -->
 <div id="app" class="container">
 
-  <div class="top-btn" onclick="openDashboard()">Dashboard</div>
+  <div class="top-btn dashboard-btn" onclick="openDashboard()">Dashboard</div>
+  <div class="top-btn logout-btn" onclick="logout()">Logout</div>
 
-  <h1>Southwave Membership</h1>
+  <h1>Southwave Fitness Membership Tracker</h1>
 
   <div class="form">
     <input id="name" placeholder="Name">
@@ -160,6 +215,8 @@ td, th {
     <input id="duration" type="number" placeholder="Days">
     <button onclick="addMember()">Add</button>
   </div>
+
+  <input id="searchInput" placeholder="Search member name..." oninput="displayMembers()" />
 
   <div class="filters">
     <button class="filter-btn active" onclick="setFilter('all', this)">All</button>
@@ -187,15 +244,14 @@ td, th {
 
 <!-- DASHBOARD -->
 <div id="dashboardPage" class="container">
-
-  <div class="top-btn" onclick="backToApp()">Back</div>
+  <div class="top-btn dashboard-btn" onclick="backToApp()">Back</div>
+  <div class="top-btn logout-btn" onclick="logout()">Logout</div>
 
   <h1>Dashboard</h1>
 
   <div class="dashboard-box">
     <canvas id="chart"></canvas>
   </div>
-
 </div>
 
 <script>
@@ -208,15 +264,35 @@ let members = [];
 let currentFilter = "all";
 let chart;
 
+// AUTO LOGIN
+window.onload = function() {
+  const isLoggedIn = localStorage.getItem("loggedIn");
+
+  if (isLoggedIn === "true") {
+    loginBox.style.display = "none";
+    app.style.display = "block";
+    loadMembers();
+  }
+};
+
 // LOGIN
 function login() {
   if (username.value === "admin" && password.value === "admin") {
+    localStorage.setItem("loggedIn", "true");
     loginBox.style.display = "none";
     app.style.display = "block";
     loadMembers();
   } else {
     alert("Wrong login");
   }
+}
+
+// LOGOUT
+function logout() {
+  localStorage.removeItem("loggedIn");
+  app.style.display = "none";
+  dashboardPage.style.display = "none";
+  loginBox.style.display = "block";
 }
 
 // NAV
@@ -246,26 +322,19 @@ async function addMember() {
   const expiration = new Date(start);
   expiration.setDate(start.getDate() + duration);
 
-  const { error } = await supabaseClient.from("members").insert([{
+  await supabaseClient.from("members").insert([{
     name,
     start_date: startDate,
     duration,
     expiration: expiration.toISOString()
   }]);
 
-  if (error) {
-    alert("Failed to add member");
-    console.error(error);
-  } else {
-    loadMembers();
-  }
+  loadMembers();
 }
 
-// ❗ DELETE WITH CONFIRMATION (NEW)
+// DELETE
 async function deleteMember(id) {
-  const confirmDelete = confirm("Are you sure you want to remove this member?");
-  if (!confirmDelete) return;
-
+  if (!confirm("Remove this member?")) return;
   await supabaseClient.from("members").delete().eq("id", id);
   loadMembers();
 }
@@ -277,31 +346,44 @@ async function loadMembers() {
   displayMembers();
 }
 
-// STATUS
-function getStatus(exp) {
-  const diff = (new Date(exp) - new Date()) / 86400000;
-  if (diff < 0) return "Expired";
-  if (diff <= 3) return "Renew Soon";
-  return "Active";
-}
-
 // DISPLAY
 function displayMembers() {
+  const search = document.getElementById("searchInput").value.toLowerCase();
   memberList.innerHTML = "";
 
   members.forEach(m => {
-    const status = getStatus(m.expiration);
-    const remaining = Math.max(0, Math.ceil((new Date(m.expiration)-new Date())/86400000));
+
+    if (!m.name.toLowerCase().includes(search)) return;
+
+    const diffDays = Math.ceil((new Date(m.expiration) - new Date()) / 86400000);
+    const remaining = Math.max(0, diffDays);
+
+    let status = "";
+    let badgeClass = "";
+    let tooltip = "";
+    let hasTooltip = false;
+
+    if (diffDays < 0) {
+      status = "Expired";
+      badgeClass = "badge-expired";
+      tooltip = `${Math.abs(diffDays)} day(s) ago`;
+      hasTooltip = true;
+    } 
+    else if (diffDays <= 3) {
+      status = "Renew Soon";
+      badgeClass = "badge-warning";
+      tooltip = `${diffDays} day(s) left`;
+      hasTooltip = true;
+    } 
+    else {
+      status = "Active";
+      badgeClass = "badge-active";
+    }
 
     if (currentFilter !== "all" &&
       (currentFilter === "active" && status !== "Active" ||
        currentFilter === "warning" && status !== "Renew Soon" ||
        currentFilter === "expired" && status !== "Expired")) return;
-
-    let statusClass = "";
-    if (status === "Active") statusClass = "status-active";
-    if (status === "Renew Soon") statusClass = "status-warning";
-    if (status === "Expired") statusClass = "status-expired";
 
     memberList.innerHTML += `
       <tr>
@@ -309,7 +391,12 @@ function displayMembers() {
         <td>${m.start_date}</td>
         <td>${new Date(m.expiration).toLocaleDateString()}</td>
         <td>${remaining}</td>
-        <td class="${statusClass}">${status}</td>
+        <td>
+          <span class="status-badge ${badgeClass}" 
+            ${hasTooltip ? `data-tooltip="${tooltip}"` : ""}>
+            ${status}
+          </span>
+        </td>
         <td><button class="delete-btn" onclick="deleteMember(${m.id})">Remove</button></td>
       </tr>
     `;
@@ -329,10 +416,10 @@ function renderChart() {
   let active=0, warning=0, expired=0;
 
   members.forEach(m=>{
-    const s = getStatus(m.expiration);
-    if(s==="Active") active++;
-    else if(s==="Renew Soon") warning++;
-    else expired++;
+    const diffDays = Math.ceil((new Date(m.expiration) - new Date()) / 86400000);
+    if(diffDays < 0) expired++;
+    else if(diffDays <= 3) warning++;
+    else active++;
   });
 
   if(chart) chart.destroy();
@@ -349,10 +436,7 @@ function renderChart() {
     options: {
       plugins: { legend: { display: false } },
       scales: {
-        y: {
-          beginAtZero: true,
-          ticks: { precision: 0, stepSize: 1 }
-        }
+        y: { beginAtZero: true, ticks: { precision: 0, stepSize: 1 } }
       }
     }
   });
