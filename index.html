@@ -3,53 +3,33 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Gym Membership Tracker</title>
+  <title>Membership Tracker</title>
 
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <style>
-    * { box-sizing: border-box; }
-
     body {
-      font-family: Arial, sans-serif;
-      background: linear-gradient(135deg, #0f0f0f, #1a1a1a);
+      font-family: Arial;
+      background: #111;
       color: white;
-      margin: 0;
       padding: 15px;
     }
 
     .container {
-      max-width: 1000px;
+      max-width: 500px;
       margin: auto;
     }
 
-    h1 {
-      text-align: center;
-      font-size: 24px;
-      margin-bottom: 20px;
-    }
-
-    .form {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      background: #1f1f1f;
-      padding: 15px;
-      border-radius: 12px;
-      margin-bottom: 20px;
-    }
-
     input, button {
-      padding: 12px;
-      border-radius: 8px;
+      width: 100%;
+      padding: 10px;
+      margin: 5px 0;
       border: none;
-      font-size: 14px;
+      border-radius: 5px;
     }
 
     input {
-      flex: 1;
-      min-width: 120px;
-      background: #2a2a2a;
+      background: #222;
       color: white;
     }
 
@@ -57,223 +37,184 @@
       background: #00c853;
       color: white;
       cursor: pointer;
-      font-weight: bold;
-      min-width: 120px;
+    }
+
+    .logout {
+      background: #555;
     }
 
     .delete-btn {
-      background: #ff1744;
+      background: red;
     }
-
-    .table-container {
-      overflow-x: auto;
-      background: #1f1f1f;
-      padding: 10px;
-      border-radius: 12px;
-    }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      min-width: 700px;
-    }
-
-    th, td {
-      padding: 12px;
-      border-bottom: 1px solid #333;
-      text-align: center;
-      font-size: 14px;
-    }
-
-    th { color: #aaa; }
-
-    #mobileCards { display: none; }
 
     .card {
       background: #1f1f1f;
-      padding: 12px;
-      margin-bottom: 10px;
-      border-radius: 12px;
+      padding: 10px;
+      margin: 10px 0;
+      border-radius: 10px;
     }
 
-    .card div {
-      margin: 5px 0;
-      font-size: 13px;
-    }
+    .expired { color: red; }
+    .warning { color: orange; }
+    .active { color: #00e676; }
 
-    .expired { color: #ff5252; font-weight: bold; }
-    .warning { color: #ffb300; font-weight: bold; }
-    .active { color: #00e676; font-weight: bold; }
-
-    @media (max-width: 600px) {
-      .table-container { display: none; }
-      #mobileCards { display: block; }
-    }
+    #app { display: none; }
   </style>
 </head>
 
 <body>
 
-<div class="container">
-  <h1>Southwave Membership Tracker</h1>
+<!-- 🔐 LOGIN -->
+<div id="login" class="container" style="display:block;">
+  <h2>Owner Login</h2>
+  <input type="email" id="email" placeholder="Email">
+  <input type="password" id="password" placeholder="Password">
+  <button onclick="login()">Login</button>
+</div>
 
-  <div class="form">
-    <input type="text" id="name" placeholder="Member Name">
-    <input type="date" id="startDate">
-    <input type="number" id="duration" placeholder="Days">
-    <button onclick="addMember()">Add Member</button>
-  </div>
+<!-- 📊 APP -->
+<div id="app" class="container">
+  <h2>Membership Tracker</h2>
 
-  <div class="table-container">
-    <table>
-      <thead>
-        <tr>
-          <th>Name</th>
-          <th>Start</th>
-          <th>Expiration</th>
-          <th>Remaining</th>
-          <th>Status</th>
-          <th>Action</th>
-        </tr>
-      </thead>
-      <tbody id="memberList"></tbody>
-    </table>
-  </div>
+  <button class="logout" onclick="logout()">Logout</button>
 
-  <div id="mobileCards"></div>
+  <input type="text" id="name" placeholder="Name">
+  <input type="date" id="startDate">
+  <input type="number" id="duration" placeholder="Duration (days)">
+
+  <button onclick="addMember()">Add Member</button>
+
+  <div id="list"></div>
 </div>
 
 <script>
-  // ✅ YOUR SUPABASE CONNECTION
+  // 🔥 SUPABASE CONFIG
   const supabaseUrl = "https://oldaiifradpghhsjzghn.supabase.co";
   const supabaseKey = "sb_publishable_eaCeTtzXbN0yP7re8zd6zw_aT-ovkXJ";
 
-  const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
+  const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
 
-  let members = [];
+  // 🔐 LOGIN
+  async function login() {
+    const email = document.getElementById("email").value;
+    const password = document.getElementById("password").value;
+
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password
+    });
+
+    if (error) {
+      alert(error.message);
+      return;
+    }
+
+    showApp();
+    loadMembers();
+  }
+
+  // 🚪 LOGOUT
+  async function logout() {
+    await supabase.auth.signOut();
+    location.reload();
+  }
 
   // ➕ ADD MEMBER
   async function addMember() {
     const name = document.getElementById("name").value;
     const startDate = document.getElementById("startDate").value;
-    const duration = parseInt(document.getElementById("duration").value);
+    const duration = Number(document.getElementById("duration").value);
 
-    if (!name || !startDate || !duration) {
-      alert("Please fill all fields");
-      return;
-    }
-
-    const start = new Date(startDate);
-    const expiration = new Date(start);
+    const expiration = new Date(startDate);
     expiration.setDate(expiration.getDate() + duration);
 
-    const { error } = await supabaseClient
-      .from("members")
-      .insert([{
-        name: name,
+    const { error } = await supabase.from("members").insert([
+      {
+        name,
         start_date: startDate,
-        duration: duration,
+        duration,
         expiration: expiration.toISOString()
-      }]);
+      }
+    ]);
 
     if (error) {
-      console.error(error);
-      alert("Error saving data");
-    } else {
-      loadMembers();
-    }
-  }
-
-  // 📥 LOAD MEMBERS
-  async function loadMembers() {
-    const { data, error } = await supabaseClient
-      .from("members")
-      .select("*")
-      .order("id", { ascending: false });
-
-    if (error) {
-      console.error(error);
+      alert(error.message);
       return;
     }
 
-    members = data;
-    displayMembers();
+    loadMembers();
   }
 
   // ❌ DELETE MEMBER
   async function deleteMember(id) {
-    if (confirm("Remove this member?")) {
-      const { error } = await supabaseClient
-        .from("members")
-        .delete()
-        .eq("id", id);
-
-      if (error) {
-        console.error(error);
-      } else {
-        loadMembers();
-      }
-    }
+    await supabase.from("members").delete().eq("id", id);
+    loadMembers();
   }
 
-  function getStatus(expiration) {
-    const today = new Date();
-    const exp = new Date(expiration);
-    const diff = (exp - today) / (1000 * 60 * 60 * 24);
-
+  // 📊 STATUS
+  function getStatus(exp) {
+    const diff = (new Date(exp) - new Date()) / 86400000;
     if (diff < 0) return "Expired";
     if (diff <= 3) return "Renew Soon";
     return "Active";
   }
 
-  function getRemainingDays(expiration) {
-    const today = new Date();
-    const exp = new Date(expiration);
-    let diff = Math.ceil((exp - today) / (1000 * 60 * 60 * 24));
-    return diff < 0 ? 0 : diff;
+  function getRemaining(exp) {
+    return Math.max(0, Math.ceil((new Date(exp) - new Date()) / 86400000));
   }
 
-  function displayMembers() {
-    const table = document.getElementById("memberList");
-    const cards = document.getElementById("mobileCards");
+  // 📥 LOAD MEMBERS
+  async function loadMembers() {
+    const { data, error } = await supabase
+      .from("members")
+      .select("*")
+      .order("start_date", { ascending: false });
 
-    table.innerHTML = "";
-    cards.innerHTML = "";
+    if (error) {
+      console.log(error);
+      return;
+    }
 
-    members.forEach((m) => {
+    const list = document.getElementById("list");
+    list.innerHTML = "";
+
+    data.forEach(m => {
       const status = getStatus(m.expiration);
-      const remaining = getRemainingDays(m.expiration);
+      const remaining = getRemaining(m.expiration);
 
       let color = "active";
       if (status === "Expired") color = "expired";
       if (status === "Renew Soon") color = "warning";
 
-      table.innerHTML += `
-        <tr>
-          <td>${m.name}</td>
-          <td>${m.start_date}</td>
-          <td>${new Date(m.expiration).toLocaleDateString()}</td>
-          <td>${remaining}</td>
-          <td class="${color}">${status}</td>
-          <td><button class="delete-btn" onclick="deleteMember(${m.id})">Remove</button></td>
-        </tr>
-      `;
-
-      cards.innerHTML += `
+      list.innerHTML += `
         <div class="card">
-          <div><b>Name:</b> ${m.name}</div>
-          <div><b>Start:</b> ${m.start_date}</div>
-          <div><b>Expiration:</b> ${new Date(m.expiration).toLocaleDateString()}</div>
-          <div><b>Remaining:</b> ${remaining} days</div>
-          <div class="${color}"><b>Status:</b> ${status}</div>
-          <button class="delete-btn" onclick="deleteMember(${m.id})">Remove</button>
+          <div><b>${m.name}</b></div>
+          <div>Start: ${m.start_date}</div>
+          <div>Expire: ${new Date(m.expiration).toLocaleDateString()}</div>
+          <div>Remaining: ${remaining} days</div>
+          <div class="${color}">${status}</div>
+          <button class="delete-btn" onclick="deleteMember('${m.id}')">Remove</button>
         </div>
       `;
     });
   }
 
-  // 🚀 START
-  loadMembers();
+  // 🔐 SHOW APP ONLY AFTER LOGIN
+  function showApp() {
+    document.getElementById("login").style.display = "none";
+    document.getElementById("app").style.display = "block";
+  }
+
+  // 🔁 AUTO SESSION CHECK
+  supabase.auth.getSession().then(({ data }) => {
+    if (data.session) {
+      showApp();
+      loadMembers();
+    } else {
+      document.getElementById("login").style.display = "block";
+      document.getElementById("app").style.display = "none";
+    }
+  });
 </script>
 
 </body>
