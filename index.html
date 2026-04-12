@@ -76,8 +76,8 @@ body {
   margin: 120px auto;
   padding: 24px;
   border-radius: 16px;
-  background: rgba(255,255,255,0.03);
-  border: 1px solid rgba(255,255,255,0.06);
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
 }
 
 input {
@@ -88,6 +88,22 @@ input {
   border: 1px solid rgba(255,255,255,0.08);
   background: rgba(255,255,255,0.03);
   color: white;
+  outline: none;
+}
+
+input:focus {
+  border: 1px solid #e63946;
+  box-shadow: 0 0 10px rgba(230,57,70,0.3);
+}
+
+/* 🔥 FIX AUTOFILL WHITE BUG */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  -webkit-text-fill-color: white !important;
+  -webkit-box-shadow: 0 0 0px 1000px rgba(255,255,255,0.03) inset !important;
+  transition: background-color 9999s ease-in-out 0s;
 }
 
 button {
@@ -121,7 +137,6 @@ button {
   font-size: 24px;
 }
 
-/* LOGOUT ICON */
 .icon-btn {
   width: 38px;
   height: 38px;
@@ -151,8 +166,8 @@ button {
 .card {
   padding: 14px;
   border-radius: 14px;
-  background: rgba(255,255,255,0.03);
-  border: 1px solid rgba(255,255,255,0.06);
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
 }
 
 /* FORM */
@@ -197,7 +212,7 @@ button {
   color: white;
 }
 
-/* MEMBERS */
+/* MEMBER CARD */
 .member-grid {
   display: grid;
   gap: 10px;
@@ -206,16 +221,11 @@ button {
 .member-card {
   padding: 14px;
   border-radius: 14px;
-  background: rgba(255,255,255,0.03);
-  border: 1px solid rgba(255,255,255,0.06);
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
   display: flex;
   justify-content: space-between;
   align-items: center;
-}
-
-.member-meta {
-  font-size: 12px;
-  color: #aaa;
 }
 
 /* STATUS */
@@ -227,9 +237,30 @@ button {
 }
 
 .active { color: #4ade80; }
-.warning { color: #fbbf24; }
-.expired { color: #9ca3af; }
 
+.warning {
+  color: #fbbf24;
+  animation: glowWarning 1.5s infinite;
+}
+
+.expired {
+  color: #ff4d4d;
+  animation: glowExpired 1.5s infinite;
+}
+
+@keyframes glowWarning {
+  0% { text-shadow: 0 0 0px #fbbf24; }
+  50% { text-shadow: 0 0 10px #fbbf24; }
+  100% { text-shadow: 0 0 0px #fbbf24; }
+}
+
+@keyframes glowExpired {
+  0% { text-shadow: 0 0 0px #ff4d4d; }
+  50% { text-shadow: 0 0 12px #ff4d4d; }
+  100% { text-shadow: 0 0 0px #ff4d4d; }
+}
+
+/* TOOLTIP */
 .status::after {
   content: attr(data-tooltip);
   position: absolute;
@@ -249,7 +280,7 @@ button {
   opacity: 1;
 }
 
-/* REMOVE */
+/* DELETE */
 .delete-btn {
   margin-left: 10px;
   padding: 6px 10px;
@@ -284,7 +315,6 @@ button {
 
   <div class="header">
     <h1>Southwave Fitness</h1>
-
     <div class="icon-btn" onclick="logout()">
       <svg viewBox="0 0 24 24">
         <path d="M10 17v-2h4v2h5v-2h2v6H3v-6h2v2h5zm2-15l5 5h-3v6h-4V7H7l5-5z"/>
@@ -326,32 +356,6 @@ const supabaseClient = supabase.createClient(
 let members = [];
 let currentFilter = "all";
 
-/* =========================
-   AUTO LOGOUT (INACTIVITY)
-========================= */
-let inactivityTimer;
-
-function startInactivityTimer() {
-  clearTimeout(inactivityTimer);
-
-  inactivityTimer = setTimeout(() => {
-    alert("Logged out due to inactivity.");
-    logout();
-  }, 120000); // 2 minutes
-}
-
-function resetInactivityTimer() {
-  if (localStorage.getItem("loggedIn") === "true") {
-    startInactivityTimer();
-  }
-}
-
-document.addEventListener("mousemove", resetInactivityTimer);
-document.addEventListener("keydown", resetInactivityTimer);
-document.addEventListener("click", resetInactivityTimer);
-document.addEventListener("touchstart", resetInactivityTimer);
-
-/* LOGIN */
 window.onload = () => {
   setTimeout(() => {
     document.getElementById("loader").classList.add("hide");
@@ -373,8 +377,6 @@ function loginSuccess() {
   loginBox.style.display = "none";
   app.style.display = "block";
   loadMembers();
-
-  startInactivityTimer(); // IMPORTANT
 }
 
 function logout() {
@@ -382,28 +384,24 @@ function logout() {
   location.reload();
 }
 
-/* ADD */
 async function addMember() {
-  const nameVal = document.getElementById("name").value;
-  const startVal = document.getElementById("startDate").value;
-  const durVal = document.getElementById("duration").value;
+  const name = document.getElementById("name").value;
+  const start = document.getElementById("startDate").value;
+  const duration = parseInt(document.getElementById("duration").value);
 
-  if (!nameVal || !startVal || !durVal) return alert("Fill all fields");
-
-  const exp = new Date(startVal);
-  exp.setDate(exp.getDate() + parseInt(durVal));
+  const exp = new Date(start);
+  exp.setDate(exp.getDate() + duration);
 
   await supabaseClient.from("members").insert([{
-    name: nameVal,
-    start_date: startVal,
-    duration: durVal,
+    name,
+    start_date: start,
+    duration,
     expiration: exp.toISOString()
   }]);
 
   loadMembers();
 }
 
-/* LOAD */
 async function loadMembers() {
   const { data } = await supabaseClient.from("members").select("*");
   members = data || [];
@@ -411,19 +409,13 @@ async function loadMembers() {
   updateStats();
 }
 
-/* FILTER */
 function setFilter(type, btn) {
   currentFilter = type;
-
-  document.querySelectorAll(".filter-btn")
-    .forEach(b => b.classList.remove("active"));
-
+  document.querySelectorAll(".filter-btn").forEach(b => b.classList.remove("active"));
   btn.classList.add("active");
-
   displayMembers();
 }
 
-/* DISPLAY */
 function displayMembers() {
   const search = searchInput.value.toLowerCase();
   const list = document.getElementById("memberList");
@@ -432,7 +424,7 @@ function displayMembers() {
   members.forEach(m => {
     if (!m.name.toLowerCase().includes(search)) return;
 
-    const diff = Math.ceil((new Date(m.expiration)-new Date())/86400000);
+    const diff = Math.ceil((new Date(m.expiration) - new Date()) / 86400000);
     const remaining = Math.max(0, diff);
 
     let status =
@@ -445,7 +437,9 @@ function displayMembers() {
       <div class="member-card">
         <div>
           <b>${m.name}</b><br>
-          <span class="member-meta">Remaining: ${remaining} day(s)</span>
+          <span style="font-size:12px;color:#aaa;">
+            Remaining: ${remaining} day(s)
+          </span>
         </div>
 
         <div style="display:flex;align-items:center;">
@@ -460,13 +454,11 @@ function displayMembers() {
   });
 }
 
-/* DELETE */
 async function deleteMember(id) {
   await supabaseClient.from("members").delete().eq("id", id);
   loadMembers();
 }
 
-/* STATS */
 function updateStats() {
   let a=0,w=0,e=0;
 
