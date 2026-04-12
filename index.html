@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Membership Tracker</title>
 
+  <!-- Supabase -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <style>
@@ -22,10 +23,11 @@
 
     input, button {
       width: 100%;
-      padding: 10px;
-      margin: 5px 0;
+      padding: 12px;
+      margin: 6px 0;
       border: none;
-      border-radius: 5px;
+      border-radius: 6px;
+      font-size: 14px;
     }
 
     input {
@@ -65,10 +67,12 @@
 <body>
 
 <!-- 🔐 LOGIN -->
-<div id="login" class="container" style="display:block;">
+<div id="login" class="container">
   <h2>Owner Login</h2>
+
   <input type="email" id="email" placeholder="Email">
   <input type="password" id="password" placeholder="Password">
+
   <button onclick="login()">Login</button>
 </div>
 
@@ -94,10 +98,15 @@
 
   const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
 
-  // 🔐 LOGIN
+  // 🔐 LOGIN (FIXED)
   async function login() {
-    const email = document.getElementById("email").value;
-    const password = document.getElementById("password").value;
+    const email = document.getElementById("email").value.trim();
+    const password = document.getElementById("password").value.trim();
+
+    if (!email || !password) {
+      alert("Please enter email and password");
+      return;
+    }
 
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
@@ -106,6 +115,7 @@
 
     if (error) {
       alert(error.message);
+      console.log(error);
       return;
     }
 
@@ -125,6 +135,11 @@
     const startDate = document.getElementById("startDate").value;
     const duration = Number(document.getElementById("duration").value);
 
+    if (!name || !startDate || !duration) {
+      alert("Fill all fields");
+      return;
+    }
+
     const expiration = new Date(startDate);
     expiration.setDate(expiration.getDate() + duration);
 
@@ -139,6 +154,7 @@
 
     if (error) {
       alert(error.message);
+      console.log(error);
       return;
     }
 
@@ -147,7 +163,13 @@
 
   // ❌ DELETE MEMBER
   async function deleteMember(id) {
-    await supabase.from("members").delete().eq("id", id);
+    const { error } = await supabase.from("members").delete().eq("id", id);
+
+    if (error) {
+      console.log(error);
+      return;
+    }
+
     loadMembers();
   }
 
@@ -199,7 +221,7 @@
     });
   }
 
-  // 🔐 SHOW APP ONLY AFTER LOGIN
+  // 🔐 SHOW APP
   function showApp() {
     document.getElementById("login").style.display = "none";
     document.getElementById("app").style.display = "block";
