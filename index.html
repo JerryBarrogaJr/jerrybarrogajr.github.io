@@ -104,7 +104,6 @@ button {
   color: black;
 }
 
-/* SEARCH */
 #searchInput {
   width: 100%;
   padding: 12px;
@@ -115,7 +114,6 @@ button {
   color: white;
 }
 
-/* BADGES */
 .status-badge {
   padding: 6px 10px;
   border-radius: 999px;
@@ -140,11 +138,6 @@ button {
   color: #ff5252;
 }
 
-/* TOOLTIP */
-.status-badge[data-tooltip] {
-  cursor: pointer;
-}
-
 .status-badge[data-tooltip]::after {
   content: attr(data-tooltip);
   position: absolute;
@@ -152,17 +145,14 @@ button {
   left: 50%;
   transform: translateX(-50%);
   background: #000;
-  color: #fff;
   padding: 6px 10px;
   border-radius: 6px;
   font-size: 12px;
-  white-space: nowrap;
   opacity: 0;
-  pointer-events: none;
   transition: 0.2s;
 }
 
-.status-badge[data-tooltip]:hover::after {
+.status-badge:hover::after {
   opacity: 1;
 }
 
@@ -193,7 +183,6 @@ td, th {
 
 <body>
 
-<!-- LOGIN -->
 <div id="loginBox">
   <h2>Admin Login</h2>
   <input id="username" placeholder="Username">
@@ -201,7 +190,6 @@ td, th {
   <button onclick="login()">Login</button>
 </div>
 
-<!-- APP -->
 <div id="app" class="container">
 
   <div class="top-btn dashboard-btn" onclick="openDashboard()">Dashboard</div>
@@ -242,7 +230,6 @@ td, th {
   </div>
 </div>
 
-<!-- DASHBOARD -->
 <div id="dashboardPage" class="container">
   <div class="top-btn dashboard-btn" onclick="backToApp()">Back</div>
   <div class="top-btn logout-btn" onclick="logout()">Logout</div>
@@ -264,38 +251,39 @@ let members = [];
 let currentFilter = "all";
 let chart;
 
-// AUTO LOGIN
-window.onload = function() {
-  const isLoggedIn = localStorage.getItem("loggedIn");
+// ✅ DATE FORMAT FUNCTION (MM/DD/YYYY)
+function formatDate(dateString) {
+  const date = new Date(dateString);
 
-  if (isLoggedIn === "true") {
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const year = date.getFullYear();
+
+  return `${month}/${day}/${year}`;
+}
+
+window.onload = function() {
+  if (localStorage.getItem("loggedIn") === "true") {
     loginBox.style.display = "none";
     app.style.display = "block";
     loadMembers();
   }
 };
 
-// LOGIN
 function login() {
   if (username.value === "admin" && password.value === "admin") {
     localStorage.setItem("loggedIn", "true");
     loginBox.style.display = "none";
     app.style.display = "block";
     loadMembers();
-  } else {
-    alert("Wrong login");
-  }
+  } else alert("Wrong login");
 }
 
-// LOGOUT
 function logout() {
   localStorage.removeItem("loggedIn");
-  app.style.display = "none";
-  dashboardPage.style.display = "none";
-  loginBox.style.display = "block";
+  location.reload();
 }
 
-// NAV
 function openDashboard() {
   app.style.display = "none";
   dashboardPage.style.display = "block";
@@ -307,16 +295,10 @@ function backToApp() {
   app.style.display = "block";
 }
 
-// ADD MEMBER
 async function addMember() {
   const name = document.getElementById("name").value;
   const startDate = document.getElementById("startDate").value;
   const duration = parseInt(document.getElementById("duration").value);
-
-  if (!name || !startDate || !duration) {
-    alert("Please fill all fields");
-    return;
-  }
 
   const start = new Date(startDate);
   const expiration = new Date(start);
@@ -332,78 +314,43 @@ async function addMember() {
   loadMembers();
 }
 
-// DELETE
-async function deleteMember(id) {
-  if (!confirm("Remove this member?")) return;
-  await supabaseClient.from("members").delete().eq("id", id);
-  loadMembers();
-}
-
-// LOAD
 async function loadMembers() {
   const { data } = await supabaseClient.from("members").select("*");
   members = data || [];
   displayMembers();
 }
 
-// DISPLAY
 function displayMembers() {
   const search = document.getElementById("searchInput").value.toLowerCase();
   memberList.innerHTML = "";
 
   members.forEach(m => {
-
     if (!m.name.toLowerCase().includes(search)) return;
 
     const diffDays = Math.ceil((new Date(m.expiration) - new Date()) / 86400000);
     const remaining = Math.max(0, diffDays);
 
-    let status = "";
-    let badgeClass = "";
-    let tooltip = "";
-    let hasTooltip = false;
-
-    if (diffDays < 0) {
-      status = "Expired";
-      badgeClass = "badge-expired";
-      tooltip = `${Math.abs(diffDays)} day(s) ago`;
-      hasTooltip = true;
-    } 
-    else if (diffDays <= 3) {
-      status = "Renew Soon";
-      badgeClass = "badge-warning";
-      tooltip = `${diffDays} day(s) left`;
-      hasTooltip = true;
-    } 
-    else {
-      status = "Active";
-      badgeClass = "badge-active";
-    }
-
-    if (currentFilter !== "all" &&
-      (currentFilter === "active" && status !== "Active" ||
-       currentFilter === "warning" && status !== "Renew Soon" ||
-       currentFilter === "expired" && status !== "Expired")) return;
+    let status = diffDays < 0 ? "Expired" : diffDays <= 3 ? "Renew Soon" : "Active";
+    let badgeClass = diffDays < 0 ? "badge-expired" : diffDays <= 3 ? "badge-warning" : "badge-active";
 
     memberList.innerHTML += `
       <tr>
         <td>${m.name}</td>
-        <td>${m.start_date}</td>
-        <td>${new Date(m.expiration).toLocaleDateString()}</td>
+        <td>${formatDate(m.start_date)}</td>
+        <td>${formatDate(m.expiration)}</td>
         <td>${remaining}</td>
-        <td>
-          <span class="status-badge ${badgeClass}" 
-            ${hasTooltip ? `data-tooltip="${tooltip}"` : ""}>
-            ${status}
-          </span>
-        </td>
+        <td><span class="status-badge ${badgeClass}">${status}</span></td>
         <td><button class="delete-btn" onclick="deleteMember(${m.id})">Remove</button></td>
       </tr>
     `;
   });
 }
 
-// FILTER
+async function deleteMember(id) {
+  await supabaseClient.from("members").delete().eq("id", id);
+  loadMembers();
+}
+
 function setFilter(type, btn) {
   currentFilter = type;
   document.querySelectorAll(".filter-btn").forEach(b => b.classList.remove("active"));
@@ -411,7 +358,6 @@ function setFilter(type, btn) {
   displayMembers();
 }
 
-// CHART
 function renderChart() {
   let active=0, warning=0, expired=0;
 
@@ -432,12 +378,6 @@ function renderChart() {
         data: [active, warning, expired],
         backgroundColor: ["#00e676","#ffb300","#ff5252"]
       }]
-    },
-    options: {
-      plugins: { legend: { display: false } },
-      scales: {
-        y: { beginAtZero: true, ticks: { precision: 0, stepSize: 1 } }
-      }
     }
   });
 }
