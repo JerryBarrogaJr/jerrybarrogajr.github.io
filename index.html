@@ -53,7 +53,10 @@ input, button {
   margin: 6px 0;
 }
 
-input { background: #2a2a2a; color: white; }
+input {
+  background: #2a2a2a;
+  color: white;
+}
 
 button {
   background: #00c853;
@@ -93,10 +96,6 @@ button {
   color: black;
 }
 
-.status-active { color: #00e676; font-weight: bold; }
-.status-warning { color: #ffb300; font-weight: bold; }
-.status-expired { color: #ff5252; font-weight: bold; }
-
 .table-container {
   background: #1f1f1f;
   padding: 10px;
@@ -113,6 +112,12 @@ td, th {
   text-align: center;
   border-bottom: 1px solid #333;
 }
+
+.dashboard-box {
+  background: #1f1f1f;
+  padding: 20px;
+  border-radius: 12px;
+}
 </style>
 </head>
 
@@ -126,7 +131,7 @@ td, th {
   <button onclick="login()">Login</button>
 </div>
 
-<!-- APP -->
+<!-- MAIN APP -->
 <div id="app" class="container">
 
   <div class="top-btn" onclick="openDashboard()">Dashboard</div>
@@ -151,12 +156,8 @@ td, th {
     <table>
       <thead>
         <tr>
-          <th>Name</th>
-          <th>Start</th>
-          <th>Expiration</th>
-          <th>Remaining</th>
-          <th>Status</th>
-          <th>Action</th>
+          <th>Name</th><th>Start</th><th>Expiration</th>
+          <th>Remaining</th><th>Status</th><th>Action</th>
         </tr>
       </thead>
       <tbody id="memberList"></tbody>
@@ -164,8 +165,20 @@ td, th {
   </div>
 </div>
 
+<!-- DASHBOARD -->
+<div id="dashboardPage" class="container">
+
+  <div class="top-btn" onclick="backToApp()">Back</div>
+
+  <h1>Dashboard</h1>
+
+  <div class="dashboard-box">
+    <canvas id="chart"></canvas>
+  </div>
+
+</div>
+
 <script>
-// SUPABASE
 const supabaseClient = supabase.createClient(
   "https://oldaiifradpghhsjzghn.supabase.co",
   "sb_publishable_eaCeTtzXbN0yP7re8zd6zw_aT-ovkXJ"
@@ -173,48 +186,42 @@ const supabaseClient = supabase.createClient(
 
 let members = [];
 let currentFilter = "all";
+let chart;
 
-// LOGIN FIXED
+// LOGIN
 function login() {
-  const user = document.getElementById("username").value;
-  const pass = document.getElementById("password").value;
-
-  if (user === "admin" && pass === "admin") {
-    document.getElementById("loginBox").style.display = "none";
-    document.getElementById("app").style.display = "block";
+  if (username.value === "admin" && password.value === "admin") {
+    loginBox.style.display = "none";
+    app.style.display = "block";
     loadMembers();
   } else {
-    alert("Wrong username or password");
+    alert("Wrong login");
   }
 }
 
-// LOAD
-async function loadMembers() {
-  const { data } = await supabaseClient.from("members").select("*");
-  members = data || [];
-  displayMembers();
+// NAV
+function openDashboard() {
+  app.style.display = "none";
+  dashboardPage.style.display = "block";
+  renderChart();
+}
+
+function backToApp() {
+  dashboardPage.style.display = "none";
+  app.style.display = "block";
 }
 
 // ADD
 async function addMember() {
-  const name = document.getElementById("name").value;
-  const startDate = document.getElementById("startDate").value;
-  const duration = parseInt(document.getElementById("duration").value);
-
-  if (!name || !startDate || !duration) {
-    alert("Fill all fields");
-    return;
-  }
-
-  const start = new Date(startDate);
-  const exp = new Date(start);
-  exp.setDate(start.getDate() + duration);
+  const start = new Date(startDate.value);
+  const expiration = new Date(start);
+  expiration.setDate(start.getDate() + parseInt(duration.value));
 
   await supabaseClient.from("members").insert([{
-    name,
-    start_date: startDate,
-    duration,
-    expiration: exp.toISOString()
+    name: name.value,
+    start_date: startDate.value,
+    duration: duration.value,
+    expiration: expiration.toISOString()
   }]);
 
   loadMembers();
@@ -222,59 +229,15 @@ async function addMember() {
 
 // DELETE
 async function deleteMember(id) {
-  if (!confirm("Are you sure?")) return;
   await supabaseClient.from("members").delete().eq("id", id);
   loadMembers();
 }
 
-// 🔄 RENEW + HISTORY FIXED
-async function renewMember(id) {
-  const days = prompt("Enter days to renew:");
-  if (!days || isNaN(days)) return;
-
-  const m = members.find(x => x.id === id);
-
-  const oldExp = new Date(m.expiration);
-  const newExp = new Date(oldExp);
-  newExp.setDate(newExp.getDate() + parseInt(days));
-
-  await supabaseClient
-    .from("members")
-    .update({ expiration: newExp.toISOString() })
-    .eq("id", id);
-
-  await supabaseClient.from("renewals").insert([{
-    member_id: id,
-    added_days: parseInt(days),
-    old_expiration: oldExp.toISOString(),
-    new_expiration: newExp.toISOString()
-  }]);
-
-  await loadMembers(); // IMPORTANT FIX
-}
-
-// VIEW HISTORY
-async function viewHistory(id) {
-  const { data } = await supabaseClient
-    .from("renewals")
-    .select("*")
-    .eq("member_id", id)
-    .order("id", { ascending: false });
-
-  if (!data || data.length === 0) {
-    alert("No history found");
-    return;
-  }
-
-  let text = "Renewal History:\n\n";
-
-  data.forEach(r => {
-    text += `+${r.added_days} days\n`;
-    text += `Old: ${new Date(r.old_expiration).toLocaleDateString()}\n`;
-    text += `New: ${new Date(r.new_expiration).toLocaleDateString()}\n\n`;
-  });
-
-  alert(text);
+// LOAD
+async function loadMembers() {
+  const { data } = await supabaseClient.from("members").select("*");
+  members = data || [];
+  displayMembers();
 }
 
 // STATUS
@@ -285,35 +248,26 @@ function getStatus(exp) {
   return "Active";
 }
 
-function getRemaining(exp) {
-  return Math.max(0, Math.ceil((new Date(exp) - new Date()) / 86400000));
-}
-
 // DISPLAY
 function displayMembers() {
   memberList.innerHTML = "";
 
   members.forEach(m => {
     const status = getStatus(m.expiration);
-    const remaining = getRemaining(m.expiration);
 
-    let color = "";
-    if (status === "Active") color = "status-active";
-    if (status === "Renew Soon") color = "status-warning";
-    if (status === "Expired") color = "status-expired";
+    if (currentFilter !== "all" &&
+      (currentFilter === "active" && status !== "Active" ||
+       currentFilter === "warning" && status !== "Renew Soon" ||
+       currentFilter === "expired" && status !== "Expired")) return;
 
     memberList.innerHTML += `
       <tr>
         <td>${m.name}</td>
         <td>${m.start_date}</td>
         <td>${new Date(m.expiration).toLocaleDateString()}</td>
-        <td>${remaining}</td>
-        <td class="${color}">${status}</td>
-        <td>
-          <button onclick="renewMember(${m.id})">Renew</button>
-          <button onclick="viewHistory(${m.id})">History</button>
-          <button class="delete-btn" onclick="deleteMember(${m.id})">Delete</button>
-        </td>
+        <td>${Math.max(0, Math.ceil((new Date(m.expiration)-new Date())/86400000))}</td>
+        <td>${status}</td>
+        <td><button class="delete-btn" onclick="deleteMember(${m.id})">Remove</button></td>
       </tr>
     `;
   });
@@ -325,6 +279,43 @@ function setFilter(type, btn) {
   document.querySelectorAll(".filter-btn").forEach(b => b.classList.remove("active"));
   btn.classList.add("active");
   displayMembers();
+}
+
+// CHART (INTEGER FIX INCLUDED)
+function renderChart() {
+  let active=0, warning=0, expired=0;
+
+  members.forEach(m=>{
+    const s = getStatus(m.expiration);
+    if(s==="Active") active++;
+    else if(s==="Renew Soon") warning++;
+    else expired++;
+  });
+
+  if(chart) chart.destroy();
+
+  chart = new Chart(document.getElementById("chart"), {
+    type: "bar",
+    data: {
+      labels: ["Active", "Renew Soon", "Expired"],
+      datasets: [{
+        data: [active, warning, expired],
+        backgroundColor: ["#00e676","#ffb300","#ff5252"]
+      }]
+    },
+    options: {
+      plugins: { legend: { display: false } },
+      scales: {
+        y: {
+          beginAtZero: true,
+          ticks: {
+            precision: 0,
+            stepSize: 1
+          }
+        }
+      }
+    }
+  });
 }
 </script>
 
