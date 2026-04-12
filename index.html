@@ -120,7 +120,6 @@ button {
   font-size: 12px;
   font-weight: bold;
   display: inline-block;
-  position: relative;
 }
 
 .badge-active {
@@ -136,24 +135,6 @@ button {
 .badge-expired {
   background: rgba(255, 82, 82, 0.15);
   color: #ff5252;
-}
-
-.status-badge[data-tooltip]::after {
-  content: attr(data-tooltip);
-  position: absolute;
-  bottom: 130%;
-  left: 50%;
-  transform: translateX(-50%);
-  background: #000;
-  padding: 6px 10px;
-  border-radius: 6px;
-  font-size: 12px;
-  opacity: 0;
-  transition: 0.2s;
-}
-
-.status-badge:hover::after {
-  opacity: 1;
 }
 
 .table-container {
@@ -251,14 +232,11 @@ let members = [];
 let currentFilter = "all";
 let chart;
 
-// ✅ DATE FORMAT FUNCTION (MM/DD/YYYY)
 function formatDate(dateString) {
   const date = new Date(dateString);
-
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const day = String(date.getDate()).padStart(2, '0');
   const year = date.getFullYear();
-
   return `${month}/${day}/${year}`;
 }
 
@@ -330,8 +308,20 @@ function displayMembers() {
     const diffDays = Math.ceil((new Date(m.expiration) - new Date()) / 86400000);
     const remaining = Math.max(0, diffDays);
 
-    let status = diffDays < 0 ? "Expired" : diffDays <= 3 ? "Renew Soon" : "Active";
-    let badgeClass = diffDays < 0 ? "badge-expired" : diffDays <= 3 ? "badge-warning" : "badge-active";
+    let status = diffDays < 0 ? "expired" : diffDays <= 3 ? "warning" : "active";
+
+    // ✅ FILTER FIX
+    if (currentFilter !== "all" && currentFilter !== status) return;
+
+    let badgeClass =
+      status === "expired" ? "badge-expired" :
+      status === "warning" ? "badge-warning" :
+      "badge-active";
+
+    let statusText =
+      status === "expired" ? "Expired" :
+      status === "warning" ? "Renew Soon" :
+      "Active";
 
     memberList.innerHTML += `
       <tr>
@@ -339,7 +329,7 @@ function displayMembers() {
         <td>${formatDate(m.start_date)}</td>
         <td>${formatDate(m.expiration)}</td>
         <td>${remaining}</td>
-        <td><span class="status-badge ${badgeClass}">${status}</span></td>
+        <td><span class="status-badge ${badgeClass}">${statusText}</span></td>
         <td><button class="delete-btn" onclick="deleteMember(${m.id})">Remove</button></td>
       </tr>
     `;
