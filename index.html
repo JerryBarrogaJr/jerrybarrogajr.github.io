@@ -120,6 +120,27 @@ button {
   font-size: 12px;
   font-weight: bold;
   display: inline-block;
+  position: relative;
+  cursor: pointer;
+}
+
+.status-badge::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: 130%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #000;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  opacity: 0;
+  transition: 0.2s;
+  white-space: nowrap;
+}
+
+.status-badge:hover::after {
+  opacity: 1;
 }
 
 .badge-active {
@@ -242,8 +263,8 @@ function formatDate(dateString) {
 
 window.onload = function() {
   if (localStorage.getItem("loggedIn") === "true") {
-    loginBox.style.display = "none";
-    app.style.display = "block";
+    document.getElementById("loginBox").style.display = "none";
+    document.getElementById("app").style.display = "block";
     loadMembers();
   }
 };
@@ -251,8 +272,8 @@ window.onload = function() {
 function login() {
   if (username.value === "admin" && password.value === "admin") {
     localStorage.setItem("loggedIn", "true");
-    loginBox.style.display = "none";
-    app.style.display = "block";
+    document.getElementById("loginBox").style.display = "none";
+    document.getElementById("app").style.display = "block";
     loadMembers();
   } else alert("Wrong login");
 }
@@ -263,20 +284,22 @@ function logout() {
 }
 
 function openDashboard() {
-  app.style.display = "none";
-  dashboardPage.style.display = "block";
+  document.getElementById("app").style.display = "none";
+  document.getElementById("dashboardPage").style.display = "block";
   renderChart();
 }
 
 function backToApp() {
-  dashboardPage.style.display = "none";
-  app.style.display = "block";
+  document.getElementById("dashboardPage").style.display = "none";
+  document.getElementById("app").style.display = "block";
 }
 
 async function addMember() {
   const name = document.getElementById("name").value;
   const startDate = document.getElementById("startDate").value;
   const duration = parseInt(document.getElementById("duration").value);
+
+  if (!name || !startDate || !duration) return alert("Fill all fields");
 
   const start = new Date(startDate);
   const expiration = new Date(start);
@@ -300,7 +323,8 @@ async function loadMembers() {
 
 function displayMembers() {
   const search = document.getElementById("searchInput").value.toLowerCase();
-  memberList.innerHTML = "";
+  const list = document.getElementById("memberList");
+  list.innerHTML = "";
 
   members.forEach(m => {
     if (!m.name.toLowerCase().includes(search)) return;
@@ -309,8 +333,6 @@ function displayMembers() {
     const remaining = Math.max(0, diffDays);
 
     let status = diffDays < 0 ? "expired" : diffDays <= 3 ? "warning" : "active";
-
-    // ✅ FILTER FIX
     if (currentFilter !== "all" && currentFilter !== status) return;
 
     let badgeClass =
@@ -323,13 +345,21 @@ function displayMembers() {
       status === "warning" ? "Renew Soon" :
       "Active";
 
-    memberList.innerHTML += `
+    let tooltip =
+      status === "expired" ? "membership expired" :
+      `${remaining} day(s) remaining`;
+
+    list.innerHTML += `
       <tr>
         <td>${m.name}</td>
         <td>${formatDate(m.start_date)}</td>
         <td>${formatDate(m.expiration)}</td>
         <td>${remaining}</td>
-        <td><span class="status-badge ${badgeClass}">${statusText}</span></td>
+        <td>
+          <span class="status-badge ${badgeClass}" data-tooltip="${tooltip}">
+            ${statusText}
+          </span>
+        </td>
         <td><button class="delete-btn" onclick="deleteMember(${m.id})">Remove</button></td>
       </tr>
     `;
