@@ -59,10 +59,6 @@
       font-weight: bold;
     }
 
-    .delete-btn {
-      background: #ff1744;
-    }
-
     #app {
       display: none;
     }
@@ -80,6 +76,10 @@
     .form input {
       flex: 1;
       min-width: 120px;
+    }
+
+    .delete-btn {
+      background: #ff1744;
     }
 
     .table-container {
@@ -107,6 +107,24 @@
     .expired { color: #ff5252; font-weight: bold; }
     .warning { color: #ffb300; font-weight: bold; }
     .active { color: #00e676; font-weight: bold; }
+
+    /* 🔥 FILTER BUTTONS */
+    .filters {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin: 10px 0 20px 0;
+      justify-content: center;
+    }
+
+    .filters button {
+      background: #333;
+      min-width: 120px;
+    }
+
+    .filters button.active {
+      background: #00c853;
+    }
   </style>
 </head>
 
@@ -127,12 +145,20 @@
 
   <h1>Southwave Membership Tracker</h1>
 
-  <!-- ADD MEMBER -->
+  <!-- ➕ ADD MEMBER -->
   <div class="form">
     <input type="text" id="name" placeholder="Member Name">
     <input type="date" id="startDate">
     <input type="number" id="duration" placeholder="Days">
     <button onclick="addMember()">Add Member</button>
+  </div>
+
+  <!-- 🔥 FILTER SYSTEM -->
+  <div class="filters">
+    <button onclick="setFilter('all')" class="active">All</button>
+    <button onclick="setFilter('active')">Active</button>
+    <button onclick="setFilter('warning')">Renew Soon</button>
+    <button onclick="setFilter('expired')">Expired</button>
   </div>
 
   <!-- TABLE -->
@@ -155,7 +181,7 @@
 </div>
 
 <script>
-  // 🔐 SIMPLE LOGIN (admin/admin)
+  // 🔐 LOGIN (admin/admin)
   function login() {
     const user = document.getElementById("username").value;
     const pass = document.getElementById("password").value;
@@ -169,24 +195,20 @@
     }
   }
 
-  // 🔥 SUPABASE CONFIG
+  // 🔥 SUPABASE
   const supabaseUrl = "https://oldaiifradpghhsjzghn.supabase.co";
   const supabaseKey = "sb_publishable_eaCeTtzXbN0yP7re8zd6zw_aT-ovkXJ";
 
   const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
 
   let members = [];
+  let currentFilter = "all";
 
   // ➕ ADD MEMBER
   async function addMember() {
     const name = document.getElementById("name").value;
     const startDate = document.getElementById("startDate").value;
     const duration = parseInt(document.getElementById("duration").value);
-
-    if (!name || !startDate || !duration) {
-      alert("Fill all fields");
-      return;
-    }
 
     const start = new Date(startDate);
     const expiration = new Date(start);
@@ -202,6 +224,12 @@
     loadMembers();
   }
 
+  // ❌ DELETE
+  async function deleteMember(id) {
+    await supabaseClient.from("members").delete().eq("id", id);
+    loadMembers();
+  }
+
   // 📥 LOAD
   async function loadMembers() {
     const { data } = await supabaseClient
@@ -211,12 +239,6 @@
 
     members = data || [];
     displayMembers();
-  }
-
-  // ❌ DELETE
-  async function deleteMember(id) {
-    await supabaseClient.from("members").delete().eq("id", id);
-    loadMembers();
   }
 
   // 📊 STATUS
@@ -231,7 +253,20 @@
     return Math.max(0, Math.ceil((new Date(exp) - new Date()) / 86400000));
   }
 
-  // 📋 DISPLAY
+  // 🔥 FILTER
+  function setFilter(type) {
+    currentFilter = type;
+
+    document.querySelectorAll(".filters button").forEach(btn => {
+      btn.classList.remove("active");
+    });
+
+    event.target.classList.add("active");
+
+    displayMembers();
+  }
+
+  // 📋 DISPLAY (WITH FILTER)
   function displayMembers() {
     const table = document.getElementById("memberList");
     table.innerHTML = "";
@@ -243,6 +278,11 @@
       let color = "active";
       if (status === "Expired") color = "expired";
       if (status === "Renew Soon") color = "warning";
+
+      // 🔥 FILTER LOGIC
+      if (currentFilter === "active" && status !== "Active") return;
+      if (currentFilter === "warning" && status !== "Renew Soon") return;
+      if (currentFilter === "expired" && status !== "Expired") return;
 
       table.innerHTML += `
         <tr>
