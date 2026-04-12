@@ -265,7 +265,6 @@ button {
 
 <body>
 
-<!-- LOADER -->
 <div id="loader">
   <div class="loader-dumbbell">
     <div class="loader-bar"></div>
@@ -274,7 +273,6 @@ button {
   </div>
 </div>
 
-<!-- LOGIN -->
 <div id="loginBox">
   <h2>Login</h2>
   <input id="username" placeholder="Username">
@@ -282,13 +280,11 @@ button {
   <button onclick="login()">Login</button>
 </div>
 
-<!-- APP -->
 <div id="app" class="container">
 
   <div class="header">
     <h1>Southwave Fitness</h1>
 
-    <!-- NIKE STYLE LOGOUT -->
     <div class="icon-btn" onclick="logout()">
       <svg viewBox="0 0 24 24">
         <path d="M10 17v-2h4v2h5v-2h2v6H3v-6h2v2h5zm2-15l5 5h-3v6h-4V7H7l5-5z"/>
@@ -296,14 +292,12 @@ button {
     </div>
   </div>
 
-  <!-- STATS -->
   <div class="stats">
     <div class="card"><h3 id="activeCount">0</h3><p>Active</p></div>
     <div class="card"><h3 id="warningCount">0</h3><p>Renew</p></div>
     <div class="card"><h3 id="expiredCount">0</h3><p>Expired</p></div>
   </div>
 
-  <!-- FORM -->
   <div class="form">
     <input id="name" placeholder="Name">
     <input id="startDate" type="date">
@@ -311,10 +305,8 @@ button {
     <button onclick="addMember()">Add</button>
   </div>
 
-  <!-- SEARCH -->
   <input id="searchInput" placeholder="Search..." oninput="displayMembers()">
 
-  <!-- FILTERS -->
   <div class="filters">
     <button class="filter-btn active" onclick="setFilter('all', this)">All</button>
     <button class="filter-btn" onclick="setFilter('active', this)">Active</button>
@@ -322,9 +314,7 @@ button {
     <button class="filter-btn" onclick="setFilter('expired', this)">Expired</button>
   </div>
 
-  <!-- MEMBERS -->
   <div class="member-grid" id="memberList"></div>
-
 </div>
 
 <script>
@@ -335,6 +325,31 @@ const supabaseClient = supabase.createClient(
 
 let members = [];
 let currentFilter = "all";
+
+/* =========================
+   AUTO LOGOUT (INACTIVITY)
+========================= */
+let inactivityTimer;
+
+function startInactivityTimer() {
+  clearTimeout(inactivityTimer);
+
+  inactivityTimer = setTimeout(() => {
+    alert("Logged out due to inactivity.");
+    logout();
+  }, 120000); // 2 minutes
+}
+
+function resetInactivityTimer() {
+  if (localStorage.getItem("loggedIn") === "true") {
+    startInactivityTimer();
+  }
+}
+
+document.addEventListener("mousemove", resetInactivityTimer);
+document.addEventListener("keydown", resetInactivityTimer);
+document.addEventListener("click", resetInactivityTimer);
+document.addEventListener("touchstart", resetInactivityTimer);
 
 /* LOGIN */
 window.onload = () => {
@@ -358,6 +373,8 @@ function loginSuccess() {
   loginBox.style.display = "none";
   app.style.display = "block";
   loadMembers();
+
+  startInactivityTimer(); // IMPORTANT
 }
 
 function logout() {
@@ -365,36 +382,23 @@ function logout() {
   location.reload();
 }
 
-/* ADD MEMBER (FIXED) */
+/* ADD */
 async function addMember() {
   const nameVal = document.getElementById("name").value;
   const startVal = document.getElementById("startDate").value;
   const durVal = document.getElementById("duration").value;
 
-  if (!nameVal || !startVal || !durVal) {
-    alert("Fill all fields");
-    return;
-  }
+  if (!nameVal || !startVal || !durVal) return alert("Fill all fields");
 
   const exp = new Date(startVal);
   exp.setDate(exp.getDate() + parseInt(durVal));
 
-  const { error } = await supabaseClient.from("members").insert([{
+  await supabaseClient.from("members").insert([{
     name: nameVal,
     start_date: startVal,
     duration: durVal,
     expiration: exp.toISOString()
   }]);
-
-  if (error) {
-    console.log(error);
-    alert("Failed to add member");
-    return;
-  }
-
-  document.getElementById("name").value = "";
-  document.getElementById("startDate").value = "";
-  document.getElementById("duration").value = "";
 
   loadMembers();
 }
@@ -407,7 +411,7 @@ async function loadMembers() {
   updateStats();
 }
 
-/* FILTER SYSTEM */
+/* FILTER */
 function setFilter(type, btn) {
   currentFilter = type;
 
@@ -439,22 +443,18 @@ function displayMembers() {
 
     list.innerHTML += `
       <div class="member-card">
-
         <div>
           <b>${m.name}</b><br>
-          <span class="member-meta">
-            Remaining: ${remaining} day(s)
-          </span>
+          <span class="member-meta">Remaining: ${remaining} day(s)</span>
         </div>
 
         <div style="display:flex;align-items:center;">
-          <div class="status ${status}" data-tooltip="status">
+          <div class="status ${status}" data-tooltip="${status}">
             ${status}
           </div>
 
           <button class="delete-btn" onclick="deleteMember(${m.id})">Remove</button>
         </div>
-
       </div>
     `;
   });
