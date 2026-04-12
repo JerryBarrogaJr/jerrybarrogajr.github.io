@@ -96,6 +96,22 @@ button {
   color: black;
 }
 
+/* STATUS COLORS */
+.status-active {
+  color: #00e676;
+  font-weight: bold;
+}
+
+.status-warning {
+  color: #ffb300;
+  font-weight: bold;
+}
+
+.status-expired {
+  color: #ff5252;
+  font-weight: bold;
+}
+
 .table-container {
   background: #1f1f1f;
   padding: 10px;
@@ -156,8 +172,12 @@ td, th {
     <table>
       <thead>
         <tr>
-          <th>Name</th><th>Start</th><th>Expiration</th>
-          <th>Remaining</th><th>Status</th><th>Action</th>
+          <th>Name</th>
+          <th>Start</th>
+          <th>Expiration</th>
+          <th>Remaining</th>
+          <th>Status</th>
+          <th>Action</th>
         </tr>
       </thead>
       <tbody id="memberList"></tbody>
@@ -211,7 +231,7 @@ function backToApp() {
   app.style.display = "block";
 }
 
-// ✅ FIXED ADD MEMBER (THIS WAS YOUR BUG)
+// ADD MEMBER
 async function addMember() {
   const name = document.getElementById("name").value;
   const startDate = document.getElementById("startDate").value;
@@ -226,25 +246,26 @@ async function addMember() {
   const expiration = new Date(start);
   expiration.setDate(start.getDate() + duration);
 
-  const { error } = await supabaseClient
-    .from("members")
-    .insert([{
-      name,
-      start_date: startDate,
-      duration,
-      expiration: expiration.toISOString()
-    }]);
+  const { error } = await supabaseClient.from("members").insert([{
+    name,
+    start_date: startDate,
+    duration,
+    expiration: expiration.toISOString()
+  }]);
 
   if (error) {
-    console.error(error);
     alert("Failed to add member");
+    console.error(error);
   } else {
     loadMembers();
   }
 }
 
-// DELETE
+// ❗ DELETE WITH CONFIRMATION (NEW)
 async function deleteMember(id) {
+  const confirmDelete = confirm("Are you sure you want to remove this member?");
+  if (!confirmDelete) return;
+
   await supabaseClient.from("members").delete().eq("id", id);
   loadMembers();
 }
@@ -270,19 +291,25 @@ function displayMembers() {
 
   members.forEach(m => {
     const status = getStatus(m.expiration);
+    const remaining = Math.max(0, Math.ceil((new Date(m.expiration)-new Date())/86400000));
 
     if (currentFilter !== "all" &&
       (currentFilter === "active" && status !== "Active" ||
        currentFilter === "warning" && status !== "Renew Soon" ||
        currentFilter === "expired" && status !== "Expired")) return;
 
+    let statusClass = "";
+    if (status === "Active") statusClass = "status-active";
+    if (status === "Renew Soon") statusClass = "status-warning";
+    if (status === "Expired") statusClass = "status-expired";
+
     memberList.innerHTML += `
       <tr>
         <td>${m.name}</td>
         <td>${m.start_date}</td>
         <td>${new Date(m.expiration).toLocaleDateString()}</td>
-        <td>${Math.max(0, Math.ceil((new Date(m.expiration)-new Date())/86400000))}</td>
-        <td>${status}</td>
+        <td>${remaining}</td>
+        <td class="${statusClass}">${status}</td>
         <td><button class="delete-btn" onclick="deleteMember(${m.id})">Remove</button></td>
       </tr>
     `;
