@@ -108,22 +108,42 @@
     .warning { color: #ffb300; font-weight: bold; }
     .active { color: #00e676; font-weight: bold; }
 
-    /* 🔥 FILTER BUTTONS */
-    .filters {
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-      margin: 10px 0 20px 0;
-      justify-content: center;
+    /* 🔥 FILTER ICON MENU */
+    .filter-wrapper {
+      position: relative;
+      text-align: right;
+      margin: 10px 0;
     }
 
-    .filters button {
+    .filter-btn {
+      width: 45px;
+      height: 45px;
+      border-radius: 50%;
       background: #333;
-      min-width: 120px;
+      font-size: 18px;
+      border: none;
+      cursor: pointer;
     }
 
-    .filters button.active {
-      background: #00c853;
+    .filter-menu {
+      display: none;
+      position: absolute;
+      right: 0;
+      background: #1f1f1f;
+      border-radius: 10px;
+      padding: 8px;
+      width: 160px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.5);
+    }
+
+    .filter-menu div {
+      padding: 10px;
+      cursor: pointer;
+      border-radius: 6px;
+    }
+
+    .filter-menu div:hover {
+      background: #333;
     }
   </style>
 </head>
@@ -153,12 +173,16 @@
     <button onclick="addMember()">Add Member</button>
   </div>
 
-  <!-- 🔥 FILTER SYSTEM -->
-  <div class="filters">
-    <button onclick="setFilter('all')" class="active">All</button>
-    <button onclick="setFilter('active')">Active</button>
-    <button onclick="setFilter('warning')">Renew Soon</button>
-    <button onclick="setFilter('expired')">Expired</button>
+  <!-- 🔥 FILTER ICON -->
+  <div class="filter-wrapper">
+    <button class="filter-btn" onclick="toggleFilter()">☰</button>
+
+    <div id="filterMenu" class="filter-menu">
+      <div onclick="setFilter('all')">All</div>
+      <div onclick="setFilter('active')">Active</div>
+      <div onclick="setFilter('warning')">Renew Soon</div>
+      <div onclick="setFilter('expired')">Expired</div>
+    </div>
   </div>
 
   <!-- TABLE -->
@@ -204,7 +228,7 @@
   let members = [];
   let currentFilter = "all";
 
-  // ➕ ADD MEMBER
+  // ➕ ADD
   async function addMember() {
     const name = document.getElementById("name").value;
     const startDate = document.getElementById("startDate").value;
@@ -253,20 +277,19 @@
     return Math.max(0, Math.ceil((new Date(exp) - new Date()) / 86400000));
   }
 
-  // 🔥 FILTER
+  // 🔥 FILTER MENU
+  function toggleFilter() {
+    const menu = document.getElementById("filterMenu");
+    menu.style.display = menu.style.display === "block" ? "none" : "block";
+  }
+
   function setFilter(type) {
     currentFilter = type;
-
-    document.querySelectorAll(".filters button").forEach(btn => {
-      btn.classList.remove("active");
-    });
-
-    event.target.classList.add("active");
-
+    document.getElementById("filterMenu").style.display = "none";
     displayMembers();
   }
 
-  // 📋 DISPLAY (WITH FILTER)
+  // 📋 DISPLAY
   function displayMembers() {
     const table = document.getElementById("memberList");
     table.innerHTML = "";
@@ -279,7 +302,7 @@
       if (status === "Expired") color = "expired";
       if (status === "Renew Soon") color = "warning";
 
-      // 🔥 FILTER LOGIC
+      // FILTER LOGIC
       if (currentFilter === "active" && status !== "Active") return;
       if (currentFilter === "warning" && status !== "Renew Soon") return;
       if (currentFilter === "expired" && status !== "Expired") return;
