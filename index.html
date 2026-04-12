@@ -24,8 +24,8 @@
       width: 100%;
       padding: 10px;
       margin: 5px 0;
-      border-radius: 5px;
       border: none;
+      border-radius: 5px;
     }
 
     input {
@@ -71,43 +71,39 @@
 </div>
 
 <script>
-  // 🔥 YOUR SUPABASE CONFIG
+  // 🔥 YOUR SUPABASE INFO
   const supabaseUrl = "https://oldaiifradpghhsjzghn.supabase.co";
   const supabaseKey = "sb_publishable_eaCeTtzXbN0yP7re8zd6zw_aT-ovkXJ";
 
   const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
 
-  // ➕ ADD MEMBER
+  // ➕ ADD MEMBER (FIXED)
   async function addMember() {
-    const name = document.getElementById("name").value;
+    const name = document.getElementById("name").value.trim();
     const startDate = document.getElementById("startDate").value;
-    const duration = parseInt(document.getElementById("duration").value);
+    const duration = Number(document.getElementById("duration").value);
 
     if (!name || !startDate || !duration) {
-      alert("Fill all fields");
+      alert("Please fill all fields");
       return;
     }
 
-    // calculate expiration
     const start = new Date(startDate);
     const expiration = new Date(start);
     expiration.setDate(expiration.getDate() + duration);
-
-    // IMPORTANT FIX: ISO format
-    const expirationISO = expiration.toISOString();
 
     const { error } = await supabase.from("members").insert([
       {
         name: name,
         start_date: startDate,
         duration: duration,
-        expiration: expirationISO
+        expiration: expiration.toISOString()
       }
     ]);
 
     if (error) {
-      console.log(error);
-      alert("Error saving data");
+      console.log("INSERT ERROR:", error);
+      alert("Failed to add member. Check console.");
       return;
     }
 
@@ -116,7 +112,13 @@
 
   // ❌ DELETE MEMBER
   async function deleteMember(id) {
-    await supabase.from("members").delete().eq("id", id);
+    const { error } = await supabase.from("members").delete().eq("id", id);
+
+    if (error) {
+      console.log("DELETE ERROR:", error);
+      return;
+    }
+
     loadMembers();
   }
 
@@ -138,20 +140,20 @@
     return diff < 0 ? 0 : diff;
   }
 
-  // 📥 LOAD DATA
+  // 📥 LOAD MEMBERS
   async function loadMembers() {
     const { data, error } = await supabase
       .from("members")
       .select("*")
       .order("start_date", { ascending: false });
 
-    const list = document.getElementById("list");
-    list.innerHTML = "";
-
     if (error) {
-      console.log(error);
+      console.log("LOAD ERROR:", error);
       return;
     }
+
+    const list = document.getElementById("list");
+    list.innerHTML = "";
 
     if (!data) return;
 
@@ -167,7 +169,7 @@
         <div class="card">
           <div><b>${m.name}</b></div>
           <div>Start: ${m.start_date}</div>
-          <div>Expire: ${m.expiration ? new Date(m.expiration).toLocaleDateString() : "No date"}</div>
+          <div>Expire: ${new Date(m.expiration).toLocaleDateString()}</div>
           <div>Remaining: ${remaining} days</div>
           <div class="${color}">${status}</div>
           <button class="delete-btn" onclick="deleteMember('${m.id}')">Remove</button>
