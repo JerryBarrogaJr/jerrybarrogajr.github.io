@@ -425,13 +425,15 @@ async function addMember() {
     duration,
     expiration: exp.toISOString()
   }]);
-
   loadMembers();
 }
 
 async function loadMembers() {
   const { data } = await supabaseClient.from("members").select("*");
-  members = data || [];
+
+  // newest first (by id or created time)
+  members = (data || []).sort((a, b) => b.id - a.id);
+
   displayMembers();
   updateStats();
 }
