@@ -80,6 +80,24 @@ body {
   border: 1px solid rgba(255,255,255,0.08);
 }
 
+/* NEW: gym info panel */
+.login-info {
+  text-align: center;
+  margin-bottom: 14px;
+}
+
+.login-info h2 {
+  margin: 0;
+}
+
+.login-info p {
+  margin: 4px 0;
+  font-size: 12px;
+  color: #aaa;
+}
+
+
+
 input {
   width: 100%;
   padding: 12px;
@@ -294,7 +312,13 @@ button {
 </div>
 
 <div id="loginBox">
-  <h2>Login</h2>
+
+  <div class="login-info">
+    <h2>Southwave Fitness</h2>
+    <p>Member Management System</p>
+
+  </div>
+
   <input id="username" placeholder="Username">
   <input id="password" type="password" placeholder="Password">
   <button onclick="login()">Login</button>
