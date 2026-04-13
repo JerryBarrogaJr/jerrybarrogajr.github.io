@@ -88,23 +88,18 @@ html, body {
   border: 1px solid rgba(255,255,255,0.08);
 }
 
-/* NEW: gym info panel */
 .login-info {
   text-align: center;
   margin-bottom: 14px;
 }
 
-.login-info h2 {
-  margin: 0;
-}
+.login-info h2 { margin: 0; }
 
 .login-info p {
   margin: 4px 0;
   font-size: 12px;
   color: #aaa;
 }
-
-
 
 input {
   width: 100%;
@@ -146,7 +141,6 @@ button {
   display: none;
 }
 
-/* HEADER */
 .header {
   display: flex;
   justify-content: space-between;
@@ -154,9 +148,7 @@ button {
   margin-bottom: 10px;
 }
 
-.header h1 {
-  font-size: 24px;
-}
+.header h1 { font-size: 24px; }
 
 .icon-btn {
   width: 38px;
@@ -170,7 +162,6 @@ button {
   cursor: pointer;
 }
 
-/* STATS */
 .stats {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -185,7 +176,6 @@ button {
   border: 1px solid rgba(255,255,255,0.08);
 }
 
-/* FORM */
 .form {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -193,7 +183,6 @@ button {
   margin-bottom: 10px;
 }
 
-/* SEARCH */
 #searchInput {
   width: 100%;
   padding: 12px;
@@ -204,7 +193,6 @@ button {
   margin-bottom: 10px;
 }
 
-/* FILTERS */
 .filters {
   display: flex;
   gap: 8px;
@@ -227,7 +215,6 @@ button {
   color: white;
 }
 
-/* MEMBER */
 .member-grid {
   display: grid;
   gap: 10px;
@@ -243,7 +230,6 @@ button {
   align-items: center;
 }
 
-/* STATUS */
 .status {
   font-size: 12px;
   padding: 6px 10px;
@@ -254,7 +240,6 @@ button {
 .warning { color: #fbbf24; }
 .expired { color: #ff4d4d; }
 
-/* BUTTONS */
 .edit-btn {
   margin-left: 10px;
   padding: 6px 10px;
@@ -277,7 +262,6 @@ button {
   cursor: pointer;
 }
 
-/* MODAL */
 #editModal {
   position: fixed;
   inset: 0;
@@ -299,7 +283,6 @@ button {
 
 <body>
 
-<!-- EDIT MODAL -->
 <div id="editModal">
   <div class="modal-box">
     <h3>Edit Member</h3>
@@ -320,11 +303,9 @@ button {
 </div>
 
 <div id="loginBox">
-
   <div class="login-info">
     <h2>Southwave Fitness</h2>
     <p>Member Management System</p>
-
   </div>
 
   <input id="username" placeholder="Username">
@@ -374,7 +355,6 @@ let members = [];
 let currentFilter = "all";
 let editingId = null;
 
-/* DATE FORMAT */
 function formatDate(dateStr) {
   const d = new Date(dateStr);
   const month = String(d.getMonth() + 1).padStart(2, '0');
@@ -425,13 +405,13 @@ async function addMember() {
     duration,
     expiration: exp.toISOString()
   }]);
+
   loadMembers();
 }
 
 async function loadMembers() {
   const { data } = await supabaseClient.from("members").select("*");
 
-  // newest first (by id or created time)
   members = (data || []).sort((a, b) => b.id - a.id);
 
   displayMembers();
@@ -521,7 +501,12 @@ async function updateMember() {
   loadMembers();
 }
 
+/* ✅ UPDATED DELETE WITH CONFIRMATION */
 async function deleteMember(id) {
+  const confirmDelete = confirm("are you sure you want to remove this member?");
+
+  if (!confirmDelete) return;
+
   await supabaseClient.from("members").delete().eq("id", id);
   loadMembers();
 }
