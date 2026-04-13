@@ -96,14 +96,9 @@ input:focus {
   box-shadow: 0 0 10px rgba(230,57,70,0.3);
 }
 
-/* 🔥 FIX AUTOFILL WHITE BUG */
-input:-webkit-autofill,
-input:-webkit-autofill:hover,
-input:-webkit-autofill:focus,
-input:-webkit-autofill:active {
+input:-webkit-autofill {
   -webkit-text-fill-color: white !important;
   -webkit-box-shadow: 0 0 0px 1000px rgba(255,255,255,0.03) inset !important;
-  transition: background-color 9999s ease-in-out 0s;
 }
 
 button {
@@ -147,12 +142,6 @@ button {
   background: rgba(255,255,255,0.03);
   border: 1px solid rgba(255,255,255,0.08);
   cursor: pointer;
-}
-
-.icon-btn svg {
-  width: 18px;
-  height: 18px;
-  fill: white;
 }
 
 /* STATS */
@@ -212,7 +201,7 @@ button {
   color: white;
 }
 
-/* MEMBER CARD */
+/* MEMBER */
 .member-grid {
   display: grid;
   gap: 10px;
@@ -233,56 +222,26 @@ button {
   font-size: 12px;
   padding: 6px 10px;
   border-radius: 999px;
-  position: relative;
 }
 
 .active { color: #4ade80; }
+.warning { color: #fbbf24; }
+.expired { color: #ff4d4d; }
 
-.warning {
-  color: #fbbf24;
-  animation: glowWarning 1.5s infinite;
-}
-
-.expired {
-  color: #ff4d4d;
-  animation: glowExpired 1.5s infinite;
-}
-
-@keyframes glowWarning {
-  0% { text-shadow: 0 0 0px #fbbf24; }
-  50% { text-shadow: 0 0 10px #fbbf24; }
-  100% { text-shadow: 0 0 0px #fbbf24; }
-}
-
-@keyframes glowExpired {
-  0% { text-shadow: 0 0 0px #ff4d4d; }
-  50% { text-shadow: 0 0 12px #ff4d4d; }
-  100% { text-shadow: 0 0 0px #ff4d4d; }
-}
-
-/* TOOLTIP */
-.status::after {
-  content: attr(data-tooltip);
-  position: absolute;
-  bottom: 130%;
-  left: 50%;
-  transform: translateX(-50%);
-  background: rgba(0,0,0,0.85);
-  padding: 6px 10px;
-  border-radius: 8px;
-  font-size: 11px;
-  opacity: 0;
-  white-space: nowrap;
-  transition: 0.2s;
-}
-
-.status:hover::after {
-  opacity: 1;
-}
-
-/* DELETE */
-.delete-btn {
+/* BUTTONS */
+.edit-btn {
   margin-left: 10px;
+  padding: 6px 10px;
+  font-size: 11px;
+  border-radius: 8px;
+  background: #3b82f6;
+  border: none;
+  color: white;
+  cursor: pointer;
+}
+
+.delete-btn {
+  margin-left: 6px;
   padding: 6px 10px;
   font-size: 11px;
   border-radius: 8px;
@@ -291,10 +250,40 @@ button {
   color: white;
   cursor: pointer;
 }
+
+/* MODAL */
+#editModal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.7);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+.modal-box {
+  background: #111;
+  padding: 20px;
+  border-radius: 14px;
+  width: 300px;
+}
 </style>
 </head>
 
 <body>
+
+<!-- EDIT MODAL -->
+<div id="editModal">
+  <div class="modal-box">
+    <h3>Edit Member</h3>
+    <input id="editName" placeholder="Name">
+    <input id="editStart" type="date">
+    <input id="editDuration" type="number" placeholder="Days">
+    <button onclick="updateMember()">Save</button>
+    <button onclick="closeModal()" style="margin-top:6px;background:#555;">Cancel</button>
+  </div>
+</div>
 
 <div id="loader">
   <div class="loader-dumbbell">
@@ -315,11 +304,7 @@ button {
 
   <div class="header">
     <h1>Southwave Fitness</h1>
-    <div class="icon-btn" onclick="logout()">
-      <svg viewBox="0 0 24 24">
-        <path d="M10 17v-2h4v2h5v-2h2v6H3v-6h2v2h5zm2-15l5 5h-3v6h-4V7H7l5-5z"/>
-      </svg>
-    </div>
+    <div class="icon-btn" onclick="logout()">⎋</div>
   </div>
 
   <div class="stats">
@@ -355,6 +340,16 @@ const supabaseClient = supabase.createClient(
 
 let members = [];
 let currentFilter = "all";
+let editingId = null;
+
+/* DATE FORMAT */
+function formatDate(dateStr) {
+  const d = new Date(dateStr);
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  const year = d.getFullYear();
+  return `${month}/${day}/${year}`;
+}
 
 window.onload = () => {
   setTimeout(() => {
@@ -438,20 +433,58 @@ function displayMembers() {
         <div>
           <b>${m.name}</b><br>
           <span style="font-size:12px;color:#aaa;">
+            Start: ${formatDate(m.start_date)} <br>
+            Expire: ${formatDate(m.expiration)} <br>
             Remaining: ${remaining} day(s)
           </span>
         </div>
 
         <div style="display:flex;align-items:center;">
-          <div class="status ${status}" data-tooltip="${status}">
-            ${status}
-          </div>
+          <div class="status ${status}">${status}</div>
 
+          <button class="edit-btn" onclick="openEdit(${m.id})">Edit</button>
           <button class="delete-btn" onclick="deleteMember(${m.id})">Remove</button>
         </div>
       </div>
     `;
   });
+}
+
+function openEdit(id) {
+  const m = members.find(x => x.id === id);
+  editingId = id;
+
+  editName.value = m.name;
+  editStart.value = m.start_date;
+  editDuration.value = m.duration;
+
+  editModal.style.display = "flex";
+}
+
+function closeModal() {
+  editModal.style.display = "none";
+}
+
+async function updateMember() {
+  const name = editName.value;
+  const start = editStart.value;
+  const duration = parseInt(editDuration.value);
+
+  const exp = new Date(start);
+  exp.setDate(exp.getDate() + duration);
+
+  await supabaseClient
+    .from("members")
+    .update({
+      name,
+      start_date: start,
+      duration,
+      expiration: exp.toISOString()
+    })
+    .eq("id", editingId);
+
+  closeModal();
+  loadMembers();
 }
 
 async function deleteMember(id) {
